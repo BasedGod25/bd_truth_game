@@ -114,19 +114,32 @@ def get_vote_counts():
     return counts
 
 def get_breakdown():
-    bd = {1: [], 2: [], 3: []}
+    # Инициализируем ключи СТРОКАМИ, чтобы JSON не путался
+    bd = {"1": [], "2": [], "3": []}
+    
+    print(f"--- [DEBUG] Сбор статистики. Голоса: {round_state['votes']}")
+
     for uid, choice in round_state["votes"].items():
-        name = "Unknown"
+        name = "Аноним"
         uid_str = str(uid)
+        
+        # 1. Ищем в зрителях (по ключу-строке)
         if uid_str in db.data["viewers"]:
             name = db.data["viewers"][uid_str]["name"]
+        # 2. Ищем в гостях (перебираем всех)
         else:
             for g in db.data["guests"].values():
                 if str(g.get("tg_id")) == uid_str:
                     name = g["name"]
                     break
-        if choice in bd:
-            bd[choice].append(name)
+        
+        # Приводим выбор к строке ("1", "2" или "3")
+        choice_str = str(choice)
+        
+        if choice_str in bd:
+            bd[choice_str].append(name)
+            
+    print(f"--- [DEBUG] Итог breakdown: {bd}")
     return bd
 
 def get_main_menu():
