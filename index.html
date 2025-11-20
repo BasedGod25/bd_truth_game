@@ -56,42 +56,34 @@
         .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); z-index: 10; color: white; box-shadow: 0 0 30px var(--green); }
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-        /* ЗОНА С ВИДЕО */
-        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 400px; position: relative; }
+        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 600px; position: relative; }
         .pulsing-text { font-size: 4rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; margin-bottom: 10px;}
         .total-votes { font-size: 1.5rem; color: #ccc; margin-bottom: 20px; }
         
-        /* Исправленный контейнер видео */
         .video-wrapper {
-            width: 60%;
-            max-width: 800px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(233, 69, 96, 0.3);
-            border: 2px solid #333;
-            background: #000;
-            animation: slideUp 0.5s ease-out;
-            position: relative; /* Для позиционирования */
+            width: 60%; max-width: 800px; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 0 30px rgba(233, 69, 96, 0.3); border: 2px solid #333; background: #000;
+            animation: slideUp 0.5s ease-out; position: relative;
         }
         
-        video {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-        }
+        video { width: 100%; height: 100%; display: block; object-fit: cover; }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
         .results-wrapper { display: flex; justify-content: space-around; margin-top: 30px; align-items: flex-start; margin-bottom: 50px; }
         .result-column { width: 32%; display: flex; flex-direction: column; align-items: center; }
+        
         .bar-container { height: 140px; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 15px; }
         .bar { width: 50%; background: var(--accent); border-radius: 8px 8px 0 0; font-size: 2rem; font-weight: 900; display: flex; justify-content: center; align-items: flex-end; transition: height 1s ease-out; box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); padding-bottom: 5px; min-height: 50px !important; }
         .bar.correct-bar { background: var(--green); box-shadow: 0 0 20px var(--green); }
 
         .voters-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
-        .voter-chip { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 1.1rem; font-weight: bold; animation: popIn 0.4s ease forwards; opacity: 0; }
+        .voter-chip { 
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); 
+            padding: 6px 14px; border-radius: 20px; font-size: 1.1rem; font-weight: bold; 
+            animation: popIn 0.4s ease forwards; opacity: 0; 
+        }
         .voter-chip:nth-child(n) { animation-delay: 0.1s; }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
@@ -111,57 +103,48 @@
             <h1 class="lobby-title">ИГРА В ПРАВДУ</h1>
             <h2 style="color: #aaa;">Присоединяйтесь в Telegram</h2>
             <div class="lobby-info">Игроков: <strong>{{ playerCount }}</strong></div>
-            
-            <div style="margin-top: 20px; color: #555; font-size: 0.9rem;">
-                * Кликните мышкой по экрану один раз, чтобы разрешить видео со звуком
-            </div>
+            <div style="margin-top: 20px; color: #555; font-size: 0.9rem;">* Кликните мышкой по экрану один раз, чтобы разрешить видео со звуком</div>
         </div>
 
         <div v-else style="width: 100%; display: flex; flex-direction: column; flex-grow: 1;">
             <div class="author-title">{{ author }}</div>
             
             <div class="facts-container">
-                <div class="fact-card" :class="getCardClass(1)">
-                    <div class="fact-number">1</div>
-                    {{ facts[1] }}
-                </div>
-                <div class="fact-card" :class="getCardClass(2)">
-                    <div class="fact-number">2</div>
-                    {{ facts[2] }}
-                </div>
-                <div class="fact-card" :class="getCardClass(3)">
-                    <div class="fact-number">3</div>
-                    {{ facts[3] }}
-                </div>
+                <div class="fact-card" :class="getCardClass(1)"><div class="fact-number">1</div>{{ facts[1] }}</div>
+                <div class="fact-card" :class="getCardClass(2)"><div class="fact-number">2</div>{{ facts[2] }}</div>
+                <div class="fact-card" :class="getCardClass(3)"><div class="fact-number">3</div>{{ facts[3] }}</div>
             </div>
 
             <div v-if="view === 'voting'" class="suspense-area">
                 <div class="pulsing-text">ВРЕМЯ ВЫБИРАТЬ...</div>
                 <div class="total-votes">Принято: {{ totalVotes }}</div>
-                
                 <div class="video-wrapper" v-if="currentVideoSrc">
-                    <video 
-                        ref="videoPlayer"
-                        :src="currentVideoSrc" 
-                        playsinline 
-                        loop>
-                    </video>
+                    <video ref="videoPlayer" :src="currentVideoSrc" playsinline loop></video>
                 </div>
             </div>
 
             <div v-if="view === 'result'" style="display: flex; flex-direction: column;">
                 <div class="results-wrapper">
+                    
                     <div class="result-column">
                         <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 1}" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div></div>
-                        <div class="voters-list"><span v-for="name in breakdown[1]" :key="name" class="voter-chip">{{ name }}</span></div>
+                        <div class="voters-list">
+                            <span v-for="name in breakdown['1']" :key="name" class="voter-chip">{{ name }}</span>
+                        </div>
                     </div>
+                    
                     <div class="result-column">
                         <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 2}" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div></div>
-                        <div class="voters-list"><span v-for="name in breakdown[2]" :key="name" class="voter-chip">{{ name }}</span></div>
+                        <div class="voters-list">
+                            <span v-for="name in breakdown['2']" :key="name" class="voter-chip">{{ name }}</span>
+                        </div>
                     </div>
+                    
                     <div class="result-column">
                         <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 3}" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div></div>
-                        <div class="voters-list"><span v-for="name in breakdown[3]" :key="name" class="voter-chip">{{ name }}</span></div>
+                        <div class="voters-list">
+                            <span v-for="name in breakdown['3']" :key="name" class="voter-chip">{{ name }}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -190,13 +173,14 @@
                 const votes = ref({1:0, 2:0, 3:0});
                 const correct = ref(null);
                 const leaderboard = ref([]);
-                const breakdown = ref({1: [], 2: [], 3: []});
+                
+                // Инициализируем breakdown СТРОКАМИ
+                const breakdown = ref({"1": [], "2": [], "3": []});
 
-                // Логика видео
                 const videoList = ref([]);
                 const playedVideos = ref([]);
                 const currentVideoSrc = ref('');
-                const videoPlayer = ref(null); // Ссылка на DOM элемент
+                const videoPlayer = ref(null);
 
                 const totalVotes = computed(() => (votes.value[1]||0) + (votes.value[2]||0) + (votes.value[3]||0));
 
@@ -209,34 +193,21 @@
 
                 const selectNextVideo = async () => {
                     if (videoList.value.length === 0) return;
-                    
                     let available = videoList.value.filter(v => !playedVideos.value.includes(v));
-                    if (available.length === 0) {
-                        playedVideos.value = [];
-                        available = videoList.value;
-                    }
-                    
+                    if (available.length === 0) { playedVideos.value = []; available = videoList.value; }
                     const next = available[Math.floor(Math.random() * available.length)];
                     playedVideos.value.push(next);
                     currentVideoSrc.value = '/media/' + next;
-                    
-                    // --- ВАЖНОЕ ИСПРАВЛЕНИЕ ---
-                    // Ждем пока Vue отрисует тег video, потом запускаем
                     await nextTick(); 
                     if (videoPlayer.value) {
-                        videoPlayer.value.load(); // Явно загружаем
-                        videoPlayer.value.play().catch(e => {
-                            console.error("Автоплей заблокирован браузером:", e);
-                        });
+                        videoPlayer.value.load();
+                        videoPlayer.value.play().catch(e => console.error("Autoplay blocked:", e));
                     }
                 };
 
                 watch(view, (newVal) => {
-                    if (newVal === 'voting') {
-                        selectNextVideo();
-                    } else {
-                        currentVideoSrc.value = '';
-                    }
+                    if (newVal === 'voting') selectNextVideo();
+                    else currentVideoSrc.value = '';
                 });
 
                 socket.on('sync_state', d => {
@@ -251,13 +222,15 @@
                 socket.on('state_update', d => {
                     view.value = d.status;
                     if(d.facts) { author.value = d.author; facts.value = d.facts; }
-                    if (d.status === 'presentation') { votes.value = {1:0, 2:0, 3:0}; breakdown.value = {1:[],2:[],3:[]}; correct.value = null; }
+                    if (d.status === 'presentation') { votes.value = {1:0, 2:0, 3:0}; breakdown.value = {"1":[],"2":[],"3":[]}; correct.value = null; }
                 });
                 socket.on('vote_update', d => votes.value = d);
+                
                 socket.on('round_result', d => {
                     view.value = 'result';
                     correct.value = d.correct;
                     leaderboard.value = d.leaderboard;
+                    console.log("Received breakdown:", d.breakdown); // Debug в консоль браузера
                     breakdown.value = d.breakdown;
                 });
 
