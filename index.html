@@ -40,12 +40,11 @@
             padding-bottom: 50px;
         }
         
-        /* ЛОББИ */
         .lobby-title { font-size: 6rem; margin: 0; text-transform: uppercase; letter-spacing: 5px; color: var(--accent); }
         .lobby-info { font-size: 3rem; margin-top: 50px; background: rgba(255,255,255,0.1); display: inline-block; padding: 30px 80px; border-radius: 60px; }
         
-        /* ФАКТЫ */
         .author-title { font-size: 2.5rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-weight: 900; }
+        
         .facts-container { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
         .fact-card { 
             background: var(--card-bg); border: 2px solid #0f3460; padding: 20px; border-radius: 15px; width: 30%; min-width: 300px;
@@ -57,21 +56,12 @@
         .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); z-index: 10; color: white; box-shadow: 0 0 30px var(--green); }
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-        /* --- ЗОНА ГОЛОСОВАНИЯ С ВИДЕО --- */
-        .suspense-area { 
-            flex-grow: 1; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: flex-start; /* Выравнивание по верху */
-            align-items: center; 
-            min-height: 400px; 
-            position: relative;
-        }
-        
+        /* ЗОНА С ВИДЕО */
+        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 400px; position: relative; }
         .pulsing-text { font-size: 4rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; margin-bottom: 10px;}
         .total-votes { font-size: 1.5rem; color: #ccc; margin-bottom: 20px; }
         
-        /* Контейнер видео */
+        /* Исправленный контейнер видео */
         .video-wrapper {
             width: 60%;
             max-width: 800px;
@@ -79,21 +69,21 @@
             overflow: hidden;
             box-shadow: 0 0 30px rgba(233, 69, 96, 0.3);
             border: 2px solid #333;
-            background: black;
+            background: #000;
             animation: slideUp 0.5s ease-out;
+            position: relative; /* Для позиционирования */
         }
         
         video {
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: cover; /* или contain, если важно видеть всё видео целиком */
+            object-fit: cover;
         }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* РЕЗУЛЬТАТЫ */
         .results-wrapper { display: flex; justify-content: space-around; margin-top: 30px; align-items: flex-start; margin-bottom: 50px; }
         .result-column { width: 32%; display: flex; flex-direction: column; align-items: center; }
         .bar-container { height: 140px; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 15px; }
@@ -105,7 +95,6 @@
         .voter-chip:nth-child(n) { animation-delay: 0.1s; }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        /* ЛИДЕРБОРД */
         .leaderboard { margin-top: auto; width: 100%; background: rgba(0,0,0,0.3); padding: 30px 0; border-top: 2px solid rgba(255,255,255,0.1); border-radius: 20px; }
         .lb-row { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .lb-item { background: #16213e; width: 80%; padding: 15px 40px; border-radius: 50px; font-size: 2rem; font-weight: 900; display: flex; justify-content: space-between; align-items: center; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
@@ -122,6 +111,10 @@
             <h1 class="lobby-title">ИГРА В ПРАВДУ</h1>
             <h2 style="color: #aaa;">Присоединяйтесь в Telegram</h2>
             <div class="lobby-info">Игроков: <strong>{{ playerCount }}</strong></div>
+            
+            <div style="margin-top: 20px; color: #555; font-size: 0.9rem;">
+                * Кликните мышкой по экрану один раз, чтобы разрешить видео со звуком
+            </div>
         </div>
 
         <div v-else style="width: 100%; display: flex; flex-direction: column; flex-grow: 1;">
@@ -147,7 +140,12 @@
                 <div class="total-votes">Принято: {{ totalVotes }}</div>
                 
                 <div class="video-wrapper" v-if="currentVideoSrc">
-                    <video :src="currentVideoSrc" autoplay loop></video>
+                    <video 
+                        ref="videoPlayer"
+                        :src="currentVideoSrc" 
+                        playsinline 
+                        loop>
+                    </video>
                 </div>
             </div>
 
@@ -180,7 +178,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, watch } = Vue;
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
         const socket = io();
 
         createApp({
@@ -198,45 +196,46 @@
                 const videoList = ref([]);
                 const playedVideos = ref([]);
                 const currentVideoSrc = ref('');
+                const videoPlayer = ref(null); // Ссылка на DOM элемент
 
                 const totalVotes = computed(() => (votes.value[1]||0) + (votes.value[2]||0) + (votes.value[3]||0));
 
-                // Загружаем список видео при старте
                 const fetchVideos = async () => {
                     try {
                         const res = await fetch('/api/videos');
                         videoList.value = await res.json();
-                        console.log("Видео загружены:", videoList.value);
                     } catch (e) { console.error(e); }
                 };
 
-                // Функция выбора видео
-                const selectNextVideo = () => {
+                const selectNextVideo = async () => {
                     if (videoList.value.length === 0) return;
                     
-                    // Фильтруем те, что еще не играли
                     let available = videoList.value.filter(v => !playedVideos.value.includes(v));
-                    
-                    // Если все сыграли - сбрасываем список просмотренных
                     if (available.length === 0) {
                         playedVideos.value = [];
                         available = videoList.value;
                     }
                     
-                    // Выбираем случайное из доступных
                     const next = available[Math.floor(Math.random() * available.length)];
-                    
                     playedVideos.value.push(next);
                     currentVideoSrc.value = '/media/' + next;
-                    console.log("Playing:", next);
+                    
+                    // --- ВАЖНОЕ ИСПРАВЛЕНИЕ ---
+                    // Ждем пока Vue отрисует тег video, потом запускаем
+                    await nextTick(); 
+                    if (videoPlayer.value) {
+                        videoPlayer.value.load(); // Явно загружаем
+                        videoPlayer.value.play().catch(e => {
+                            console.error("Автоплей заблокирован браузером:", e);
+                        });
+                    }
                 };
 
-                // Следим за сменой статуса
                 watch(view, (newVal) => {
                     if (newVal === 'voting') {
                         selectNextVideo();
                     } else {
-                        currentVideoSrc.value = ''; // Выключаем видео в других фазах
+                        currentVideoSrc.value = '';
                     }
                 });
 
@@ -272,7 +271,7 @@
 
                 return { 
                     view, playerCount, author, facts, votes, totalVotes, leaderboard, breakdown, correct, 
-                    getCardClass, getBarHeight, currentVideoSrc 
+                    getCardClass, getBarHeight, currentVideoSrc, videoPlayer 
                 };
             }
         }).mount('#app');
