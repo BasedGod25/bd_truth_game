@@ -2,10 +2,12 @@ import os
 import json
 import asyncio
 import socketio
+import random
 from typing import Optional # <--- ВАЖНЫЙ ИМПОРТ
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -20,6 +22,19 @@ DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "data.json")
 
 app = FastAPI()
+# 1. Подключаем папку media как статику (чтобы видео открывалось по ссылке)
+os.makedirs("media", exist_ok=True) # Создаем папку, если нет
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
+# 2. API для получения списка видео
+@app.get("/api/videos")
+async def get_video_list():
+    files = []
+    if os.path.exists("media"):
+        for f in os.listdir("media"):
+            if f.lower().endswith(('.mp4', '.webm', '.mov')):
+                files.append(f)
+    return files
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 socket_app = socketio.ASGIApp(sio, app)
 bot = Bot(token=BOT_TOKEN)

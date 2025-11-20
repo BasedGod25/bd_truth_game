@@ -24,7 +24,6 @@
             color: var(--text); 
             font-family: 'Montserrat', sans-serif; 
             margin: 0; 
-            /* ИЗМЕНЕНИЕ: Разрешаем скролл, если контент не влезает */
             overflow-y: auto; 
             height: 100vh; 
             display: flex; 
@@ -33,7 +32,6 @@
 
         .container { 
             width: 95%; 
-            /* ИЗМЕНЕНИЕ: Мин. высота вместо фикс. высоты */
             min-height: 95vh; 
             text-align: center; 
             display: flex; 
@@ -46,10 +44,8 @@
         .lobby-title { font-size: 6rem; margin: 0; text-transform: uppercase; letter-spacing: 5px; color: var(--accent); }
         .lobby-info { font-size: 3rem; margin-top: 50px; background: rgba(255,255,255,0.1); display: inline-block; padding: 30px 80px; border-radius: 60px; }
         
-        /* ЗАГОЛОВОК */
-        .author-title { font-size: 2.5rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-weight: 900; }
-        
         /* ФАКТЫ */
+        .author-title { font-size: 2.5rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-weight: 900; }
         .facts-container { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
         .fact-card { 
             background: var(--card-bg); border: 2px solid #0f3460; padding: 20px; border-radius: 15px; width: 30%; min-width: 300px;
@@ -61,100 +57,61 @@
         .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); z-index: 10; color: white; box-shadow: 0 0 30px var(--green); }
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-        /* ОЖИДАНИЕ */
-        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 300px; }
-        .pulsing-text { font-size: 6rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } }
-
-        /* РЕЗУЛЬТАТЫ */
-        .results-wrapper { 
+        /* --- ЗОНА ГОЛОСОВАНИЯ С ВИДЕО --- */
+        .suspense-area { 
+            flex-grow: 1; 
             display: flex; 
-            justify-content: space-around; 
-            margin-top: 30px; 
-            align-items: flex-start; /* Выравнивание по верху, чтобы столбики росли вниз */
-            margin-bottom: 50px;
-        }
-        .result-column { width: 32%; display: flex; flex-direction: column; align-items: center; }
-
-        .bar-container { 
-            height: 140px; /* Высота области для столбиков */
-            width: 100%; 
-            display: flex; 
-            align-items: flex-end; 
-            justify-content: center; 
-            margin-bottom: 15px; 
+            flex-direction: column; 
+            justify-content: flex-start; /* Выравнивание по верху */
+            align-items: center; 
+            min-height: 400px; 
+            position: relative;
         }
         
-        .bar { 
-            width: 50%; 
-            background: var(--accent); 
-            border-radius: 8px 8px 0 0; 
-            font-size: 2rem; /* Крупная цифра */
-            font-weight: 900; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-end; /* Цифра внизу столбика */
-            transition: height 1s ease-out; 
-            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); 
-            padding-bottom: 5px;
-            
-            /* ИЗМЕНЕНИЕ: Мин высота, чтобы цифра всегда влезала */
-            min-height: 50px !important; 
+        .pulsing-text { font-size: 4rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; margin-bottom: 10px;}
+        .total-votes { font-size: 1.5rem; color: #ccc; margin-bottom: 20px; }
+        
+        /* Контейнер видео */
+        .video-wrapper {
+            width: 60%;
+            max-width: 800px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(233, 69, 96, 0.3);
+            border: 2px solid #333;
+            background: black;
+            animation: slideUp 0.5s ease-out;
         }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover; /* или contain, если важно видеть всё видео целиком */
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* РЕЗУЛЬТАТЫ */
+        .results-wrapper { display: flex; justify-content: space-around; margin-top: 30px; align-items: flex-start; margin-bottom: 50px; }
+        .result-column { width: 32%; display: flex; flex-direction: column; align-items: center; }
+        .bar-container { height: 140px; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 15px; }
+        .bar { width: 50%; background: var(--accent); border-radius: 8px 8px 0 0; font-size: 2rem; font-weight: 900; display: flex; justify-content: center; align-items: flex-end; transition: height 1s ease-out; box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); padding-bottom: 5px; min-height: 50px !important; }
         .bar.correct-bar { background: var(--green); box-shadow: 0 0 20px var(--green); }
 
-        /* ИМЕНА ПРОГОЛОСОВАВШИХ */
         .voters-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
-        .voter-chip { 
-            background: rgba(255, 255, 255, 0.1); 
-            border: 1px solid rgba(255, 255, 255, 0.3); 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 1.1rem; 
-            font-weight: bold; 
-            animation: popIn 0.4s ease forwards; 
-            opacity: 0; 
-        }
+        .voter-chip { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 1.1rem; font-weight: bold; animation: popIn 0.4s ease forwards; opacity: 0; }
         .voter-chip:nth-child(n) { animation-delay: 0.1s; }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
         /* ЛИДЕРБОРД */
-        .leaderboard { 
-            margin-top: auto; 
-            width: 100%; 
-            background: rgba(0,0,0,0.3); 
-            padding: 30px 0; 
-            border-top: 2px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-        }
-        .leaderboard h3 { margin: 0 0 20px 0; font-size: 2.2rem; color: #ccc; text-transform: uppercase; letter-spacing: 4px; }
-        
+        .leaderboard { margin-top: auto; width: 100%; background: rgba(0,0,0,0.3); padding: 30px 0; border-top: 2px solid rgba(255,255,255,0.1); border-radius: 20px; }
         .lb-row { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        
-        .lb-item { 
-            background: #16213e;
-            width: 80%; 
-            padding: 15px 40px; 
-            border-radius: 50px; 
-            font-size: 2rem; 
-            font-weight: 900;
-            display: flex; 
-            justify-content: space-between;
-            align-items: center;
-            border: 2px solid rgba(255,255,255,0.1);
-            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
-        }
-
-        /* МЕДАЛИ */
+        .lb-item { background: #16213e; width: 80%; padding: 15px 40px; border-radius: 50px; font-size: 2rem; font-weight: 900; display: flex; justify-content: space-between; align-items: center; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
         .lb-item:nth-child(1) { background: linear-gradient(90deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.3)); border-color: var(--gold); color: var(--gold); transform: scale(1.05); }
         .lb-item:nth-child(2) { border-color: var(--silver); color: var(--silver); }
         .lb-item:nth-child(3) { border-color: var(--bronze); color: var(--bronze); }
-
-        /* Скроллбар */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1a1a2e; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
 
     </style>
 </head>
@@ -165,16 +122,6 @@
             <h1 class="lobby-title">ИГРА В ПРАВДУ</h1>
             <h2 style="color: #aaa;">Присоединяйтесь в Telegram</h2>
             <div class="lobby-info">Игроков: <strong>{{ playerCount }}</strong></div>
-            
-             <div class="leaderboard" style="margin-top: 50px; background: transparent; border: none;">
-                <h3>Топ игроков</h3>
-                <div class="lb-row">
-                    <div v-for="(u, i) in leaderboard.slice(0,3)" class="lb-item">
-                        <span>#{{ i+1 }} {{ u.name }}</span>
-                        <span>{{ u.score }}</span>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div v-else style="width: 100%; display: flex; flex-direction: column; flex-grow: 1;">
@@ -196,63 +143,44 @@
             </div>
 
             <div v-if="view === 'voting'" class="suspense-area">
-                <div class="pulsing-text">ГОЛОСУЕМ...</div>
-                <div style="font-size: 2rem; margin-top: 20px; color: #888;">Принято: {{ totalVotes }}</div>
+                <div class="pulsing-text">ВРЕМЯ ВЫБИРАТЬ...</div>
+                <div class="total-votes">Принято: {{ totalVotes }}</div>
+                
+                <div class="video-wrapper" v-if="currentVideoSrc">
+                    <video :src="currentVideoSrc" autoplay loop></video>
+                </div>
             </div>
 
             <div v-if="view === 'result'" style="display: flex; flex-direction: column;">
-                
                 <div class="results-wrapper">
                     <div class="result-column">
-                        <div class="bar-container">
-                            <div class="bar" :class="{'correct-bar': correct === 1}" :style="{height: getBarHeight(1)}">
-                                {{ votes[1] }}
-                            </div>
-                        </div>
-                        <div class="voters-list">
-                            <span v-for="name in breakdown[1]" :key="name" class="voter-chip">{{ name }}</span>
-                        </div>
+                        <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 1}" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div></div>
+                        <div class="voters-list"><span v-for="name in breakdown[1]" :key="name" class="voter-chip">{{ name }}</span></div>
                     </div>
                     <div class="result-column">
-                        <div class="bar-container">
-                            <div class="bar" :class="{'correct-bar': correct === 2}" :style="{height: getBarHeight(2)}">
-                                {{ votes[2] }}
-                            </div>
-                        </div>
-                        <div class="voters-list">
-                            <span v-for="name in breakdown[2]" :key="name" class="voter-chip">{{ name }}</span>
-                        </div>
+                        <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 2}" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div></div>
+                        <div class="voters-list"><span v-for="name in breakdown[2]" :key="name" class="voter-chip">{{ name }}</span></div>
                     </div>
                     <div class="result-column">
-                        <div class="bar-container">
-                            <div class="bar" :class="{'correct-bar': correct === 3}" :style="{height: getBarHeight(3)}">
-                                {{ votes[3] }}
-                            </div>
-                        </div>
-                        <div class="voters-list">
-                            <span v-for="name in breakdown[3]" :key="name" class="voter-chip">{{ name }}</span>
-                        </div>
+                        <div class="bar-container"><div class="bar" :class="{'correct-bar': correct === 3}" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div></div>
+                        <div class="voters-list"><span v-for="name in breakdown[3]" :key="name" class="voter-chip">{{ name }}</span></div>
                     </div>
                 </div>
 
                 <div class="leaderboard">
                     <div class="lb-row">
                         <div v-for="(u, i) in leaderboard.slice(0,5)" class="lb-item">
-                            <div style="display:flex; gap: 20px;">
-                                <span>{{ i+1 }}.</span>
-                                <span>{{ u.name }}</span>
-                            </div>
+                            <div style="display:flex; gap: 20px;"><span>{{ i+1 }}.</span><span>{{ u.name }}</span></div>
                             <span>{{ u.score }}</span>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
 
     <script>
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, onMounted, watch } = Vue;
         const socket = io();
 
         createApp({
@@ -266,7 +194,51 @@
                 const leaderboard = ref([]);
                 const breakdown = ref({1: [], 2: [], 3: []});
 
+                // Логика видео
+                const videoList = ref([]);
+                const playedVideos = ref([]);
+                const currentVideoSrc = ref('');
+
                 const totalVotes = computed(() => (votes.value[1]||0) + (votes.value[2]||0) + (votes.value[3]||0));
+
+                // Загружаем список видео при старте
+                const fetchVideos = async () => {
+                    try {
+                        const res = await fetch('/api/videos');
+                        videoList.value = await res.json();
+                        console.log("Видео загружены:", videoList.value);
+                    } catch (e) { console.error(e); }
+                };
+
+                // Функция выбора видео
+                const selectNextVideo = () => {
+                    if (videoList.value.length === 0) return;
+                    
+                    // Фильтруем те, что еще не играли
+                    let available = videoList.value.filter(v => !playedVideos.value.includes(v));
+                    
+                    // Если все сыграли - сбрасываем список просмотренных
+                    if (available.length === 0) {
+                        playedVideos.value = [];
+                        available = videoList.value;
+                    }
+                    
+                    // Выбираем случайное из доступных
+                    const next = available[Math.floor(Math.random() * available.length)];
+                    
+                    playedVideos.value.push(next);
+                    currentVideoSrc.value = '/media/' + next;
+                    console.log("Playing:", next);
+                };
+
+                // Следим за сменой статуса
+                watch(view, (newVal) => {
+                    if (newVal === 'voting') {
+                        selectNextVideo();
+                    } else {
+                        currentVideoSrc.value = ''; // Выключаем видео в других фазах
+                    }
+                });
 
                 socket.on('sync_state', d => {
                     view.value = d.status;
@@ -274,7 +246,6 @@
                     if (d.round_data) { author.value = d.round_data.author; facts.value = d.round_data.facts; }
                     if (d.votes) votes.value = d.votes;
                     if (d.status === 'result' && d.breakdown) { breakdown.value = d.breakdown; correct.value = d.round_data.correct; }
-                    // Лидерборд может прийти при синхронизации, если его добавят на бэк, пока берем пустой
                 });
 
                 socket.on('player_update', d => playerCount.value = d.count);
@@ -292,14 +263,17 @@
                 });
 
                 const getCardClass = (id) => (view.value === 'result' && id === correct.value) ? 'winner' : (view.value === 'result' ? 'loser' : '');
-                
                 const getBarHeight = (id) => {
                     const max = Math.max(Math.max(...Object.values(votes.value)), 1);
-                    // Если голосов 0 - высота 0% (но min-height в CSS спасет ситуацию для отображения цифры)
                     return (votes.value[id] / max * 100) + '%';
                 };
 
-                return { view, playerCount, author, facts, votes, totalVotes, leaderboard, breakdown, correct, getCardClass, getBarHeight };
+                onMounted(fetchVideos);
+
+                return { 
+                    view, playerCount, author, facts, votes, totalVotes, leaderboard, breakdown, correct, 
+                    getCardClass, getBarHeight, currentVideoSrc 
+                };
             }
         }).mount('#app');
     </script>
