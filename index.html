@@ -8,36 +8,97 @@
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #1a1a2e; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .container { width: 90%; text-align: center; display: flex; flex-direction: column; height: 95vh; justify-content: center; }
-        
-        /* Лобби */
-        .lobby-info { font-size: 2rem; margin-top: 30px; background: rgba(255,255,255,0.1); display: inline-block; padding: 20px 40px; border-radius: 50px; }
-        
-        /* Факты */
-        .author-title { font-size: 2.5rem; color: #e94560; margin-bottom: 20px; text-transform: uppercase; flex-shrink: 0; }
-        
-        .facts-container { display: flex; gap: 20px; justify-content: center; margin-bottom: 20px; }
-        .fact-card { background: #16213e; border: 2px solid #0f3460; padding: 20px; border-radius: 15px; width: 30%; font-size: 1.3rem; line-height: 1.4; transition: all 0.5s; position: relative; }
-        .fact-number { font-size: 3rem; font-weight: 900; color: #533483; position: absolute; top: -20px; left: 15px; background: #1a1a2e; padding: 0 10px; }
-        
-        /* Результаты */
-        .fact-card.winner { background: #27ae60; border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5); z-index: 10;}
-        .fact-card.loser { opacity: 0.4; filter: grayscale(1); }
+        :root {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --accent: #e94560;
+            --green: #27ae60;
+            --gold: #f1c40f;
+            --text: #fff;
+        }
 
-        /* АНИМАЦИЯ ГОЛОСОВАНИЯ */
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            font-family: 'Montserrat', sans-serif; 
+            margin: 0; 
+            overflow: hidden; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        .container { 
+            width: 90%; 
+            height: 95vh; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+        }
+        
+        /* ЛОББИ */
+        .lobby-title { font-size: 6rem; margin: 0; text-transform: uppercase; letter-spacing: 5px; color: var(--accent); }
+        .lobby-info { font-size: 2.5rem; margin-top: 50px; background: rgba(255,255,255,0.1); display: inline-block; padding: 20px 60px; border-radius: 60px; border: 2px solid rgba(255,255,255,0.2); }
+        
+        /* ИГРА: ЗАГОЛОВОК */
+        .author-title { 
+            font-size: 2.5rem; 
+            color: var(--accent); 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            flex-shrink: 0; 
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+        
+        /* ИГРА: ФАКТЫ */
+        .facts-container { display: flex; gap: 20px; justify-content: center; margin-bottom: 10px; transition: all 0.5s; }
+        
+        .fact-card { 
+            background: var(--card-bg); 
+            border: 2px solid #0f3460; 
+            padding: 25px; 
+            border-radius: 15px; 
+            width: 30%; 
+            font-size: 1.4rem; 
+            line-height: 1.4; 
+            transition: all 0.5s; 
+            position: relative; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+        }
+        
+        .fact-number { 
+            font-size: 3rem; 
+            font-weight: 900; 
+            color: #533483; 
+            position: absolute; 
+            top: -25px; left: 20px; 
+            background: var(--bg); 
+            padding: 0 10px; 
+        }
+        
+        /* Состояния фактов при результате */
+        .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 40px rgba(39, 174, 96, 0.6); z-index: 10; color: white; }
+        .fact-card.loser { opacity: 0.3; filter: grayscale(1); transform: scale(0.95); }
+
+        /* АНИМАЦИЯ ОЖИДАНИЯ (PULSE) */
         .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .pulsing-text { font-size: 4rem; font-weight: 900; color: #f1c40f; text-transform: uppercase; animation: pulse 1.5s infinite; }
-        .total-votes { font-size: 1.5rem; color: #95a5a6; margin-top: 20px; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+        .pulsing-text { font-size: 5rem; font-weight: 900; color: var(--gold); text-transform: uppercase; animation: pulse 1.5s infinite; text-shadow: 0 0 30px rgba(241, 196, 15, 0.5); }
+        .total-votes { font-size: 2rem; color: #95a5a6; margin-top: 30px; font-weight: 300; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* БЛОК РЕЗУЛЬТАТОВ (Графики + Имена) */
+        /* --- БЛОК РЕЗУЛЬТАТОВ --- */
         .results-wrapper {
             display: flex;
             justify-content: space-around;
-            margin-top: 10px;
             align-items: flex-start;
-            height: 350px; /* Фиксируем высоту, чтобы лидерборд не улетал */
+            margin-top: 40px; /* Отступ сверху побольше */
+            flex-grow: 1;
         }
 
         .result-column {
@@ -47,55 +108,82 @@
             align-items: center;
         }
 
-        /* Столбики */
+        /* СТОЛБИКИ (Сделали чуть меньше) */
         .bar-container {
-            height: 150px; /* Высота зоны столбиков */
+            height: 120px; /* Было 150px, уменьшили чтобы дать место именам */
             width: 100%;
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         
         .bar { 
-            width: 60%; 
-            background: #e94560; 
+            width: 50%; 
+            background: var(--accent); 
             border-radius: 8px 8px 0 0; 
             font-size: 1.5rem; font-weight: bold; 
             display: flex; justify-content: center; align-items: flex-end; 
-            padding-bottom: 5px; min-height: 0px; transition: height 1s ease-out;
+            padding-bottom: 5px; min-height: 4px; 
+            transition: height 1s ease-out;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
         }
+        .bar.correct-bar { background: var(--green); box-shadow: 0 0 20px rgba(39, 174, 96, 0.6); }
 
-        /* Облако имен (Chips) */
+        /* СПИСОК ПРОГОЛОСОВАВШИХ (КРУПНО) */
         .voters-list {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 5px;
+            gap: 8px;
             width: 100%;
         }
 
         .voter-chip {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            animation: popIn 0.3s ease forwards;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 1.3rem; /* Крупный шрифт */
+            font-weight: 600;
+            animation: popIn 0.4s ease forwards;
             opacity: 0;
+            color: #ecf0f1;
         }
 
-        /* Задержка анимации появления имен для красоты */
-        .voter-chip:nth-child(1) { animation-delay: 0.5s; }
-        .voter-chip:nth-child(2) { animation-delay: 0.6s; }
-        .voter-chip:nth-child(3) { animation-delay: 0.7s; }
-        .voter-chip:nth-child(n+4) { animation-delay: 0.8s; }
+        .voter-chip:nth-child(1) { animation-delay: 0.1s; }
+        .voter-chip:nth-child(2) { animation-delay: 0.2s; }
+        .voter-chip:nth-child(3) { animation-delay: 0.3s; }
+        .voter-chip:nth-child(n+4) { animation-delay: 0.4s; }
 
-        @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .leaderboard { margin-top: auto; font-size: 1rem; border-top: 1px solid #333; padding-top: 10px; width: 100%;}
-        .leaderboard h3 { margin: 0 0 10px 0; font-size: 1.2rem; color: #f39c12; }
-        .lb-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;}
-        .lb-item { background: #0f3460; padding: 5px 15px; border-radius: 20px; }
+        /* ЛИДЕРБОРД (КРУПНО) */
+        .leaderboard { 
+            margin-top: auto; 
+            padding-top: 20px; 
+            width: 100%;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .leaderboard h3 { 
+            margin: 0 0 20px 0; 
+            font-size: 2rem; 
+            color: var(--gold); 
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        .lb-row { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;}
+        .lb-item { 
+            background: linear-gradient(45deg, #0f3460, #16213e); 
+            padding: 15px 30px; 
+            border-radius: 50px; 
+            font-size: 1.8rem; /* ОЧЕНЬ КРУПНО */
+            font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .lb-score { color: var(--gold); }
 
     </style>
 </head>
@@ -103,9 +191,9 @@
     <div id="app" class="container">
         
         <div v-if="view === 'lobby'">
-            <h1 style="font-size: 5rem;">ИГРА В ПРАВДУ</h1>
-            <h2>Заходи в Telegram бота</h2>
-            <div class="lobby-info">Игроков в сети: <strong>{{ playerCount }}</strong></div>
+            <h1 class="lobby-title">ИГРА В ПРАВДУ</h1>
+            <h2 style="color: #ccc; font-weight: 300;">Заходи в Telegram бота</h2>
+            <div class="lobby-info">Игроков: <strong>{{ playerCount }}</strong></div>
         </div>
 
         <div v-else style="width: 100%; display: flex; flex-direction: column; height: 100%;">
@@ -127,16 +215,16 @@
             </div>
 
             <div v-if="view === 'voting'" class="suspense-area">
-                <div class="pulsing-text">ВРЕМЯ ВЫБИРАТЬ...</div>
-                <div class="total-votes">Принято голосов: {{ totalVotes }}</div>
+                <div class="pulsing-text">Время выбирать...</div>
+                <div class="total-votes">Голосов: {{ totalVotes }}</div>
             </div>
 
-            <div v-if="view === 'result'" style="flex-grow: 1;">
+            <div v-if="view === 'result'" style="flex-grow: 1; display: flex; flex-direction: column;">
                 
                 <div class="results-wrapper">
                     <div class="result-column">
                         <div class="bar-container">
-                            <div class="bar" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div>
+                            <div class="bar" :class="{'correct-bar': correct === 1}" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div>
                         </div>
                         <div class="voters-list">
                             <span v-for="name in breakdown[1]" :key="name" class="voter-chip">{{ name }}</span>
@@ -145,7 +233,7 @@
 
                     <div class="result-column">
                         <div class="bar-container">
-                            <div class="bar" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div>
+                            <div class="bar" :class="{'correct-bar': correct === 2}" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div>
                         </div>
                         <div class="voters-list">
                             <span v-for="name in breakdown[2]" :key="name" class="voter-chip">{{ name }}</span>
@@ -154,7 +242,7 @@
 
                     <div class="result-column">
                         <div class="bar-container">
-                            <div class="bar" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div>
+                            <div class="bar" :class="{'correct-bar': correct === 3}" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div>
                         </div>
                         <div class="voters-list">
                             <span v-for="name in breakdown[3]" :key="name" class="voter-chip">{{ name }}</span>
@@ -163,10 +251,11 @@
                 </div>
 
                 <div class="leaderboard">
-                    <h3>🔥 Лидеры:</h3>
+                    <h3>🏆 Топ Лидеров</h3>
                     <div class="lb-row">
-                        <div v-for="(u, i) in leaderboard.slice(0,5)" class="lb-item">
-                            #{{ i+1 }} {{ u.name }} ({{ u.score }})
+                        <div v-for="(u, i) in leaderboard.slice(0,4)" class="lb-item">
+                            <span>{{ i+1 }}. {{ u.name }}</span>
+                            <span class="lb-score">{{ u.score }}</span>
                         </div>
                     </div>
                 </div>
@@ -188,15 +277,12 @@
                 const votes = ref({1:0, 2:0, 3:0});
                 const correct = ref(null);
                 const leaderboard = ref([]);
-                
-                // Новая переменная для хранения списка имен по вариантам
                 const breakdown = ref({1: [], 2: [], 3: []});
 
                 const totalVotes = computed(() => {
                     return (votes.value[1] || 0) + (votes.value[2] || 0) + (votes.value[3] || 0);
                 });
 
-                // --- СОБЫТИЯ ---
                 socket.on('sync_state', d => {
                     view.value = d.status;
                     playerCount.value = d.playerCount;
@@ -205,6 +291,10 @@
                         facts.value = d.round_data.facts;
                     }
                     if (d.votes) votes.value = d.votes;
+                    if (d.status === 'result' && d.breakdown) {
+                        breakdown.value = d.breakdown;
+                        correct.value = d.round_data.correct; // Восстанавливаем правильный ответ
+                    }
                 });
 
                 socket.on('player_update', d => playerCount.value = d.count);
@@ -217,7 +307,7 @@
                     }
                     if (d.status === 'presentation') {
                         votes.value = {1:0, 2:0, 3:0};
-                        breakdown.value = {1: [], 2: [], 3: []}; // Сброс имен
+                        breakdown.value = {1: [], 2: [], 3: []};
                         correct.value = null;
                     }
                 });
@@ -228,10 +318,9 @@
                     view.value = 'result';
                     correct.value = d.correct;
                     leaderboard.value = d.leaderboard;
-                    breakdown.value = d.breakdown; // Получаем список имен
+                    breakdown.value = d.breakdown;
                 });
 
-                // --- ВИЗУАЛ ---
                 const getCardClass = (id) => {
                     if (view.value !== 'result') return '';
                     return id === correct.value ? 'winner' : 'loser';
@@ -239,10 +328,10 @@
 
                 const getBarHeight = (id) => {
                     const max = Math.max(Math.max(...Object.values(votes.value)), 1);
-                    return (votes.value[id] / max * 100) + '%'; // Теперь высота в % от контейнера
+                    return (votes.value[id] / max * 100) + '%';
                 };
 
-                return { view, playerCount, author, facts, votes, totalVotes, leaderboard, breakdown, getCardClass, getBarHeight };
+                return { view, playerCount, author, facts, votes, totalVotes, leaderboard, breakdown, correct, getCardClass, getBarHeight };
             }
         }).mount('#app');
     </script>

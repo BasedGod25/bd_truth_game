@@ -168,7 +168,9 @@
         const { createApp, ref, onMounted } = Vue;
         createApp({
             setup() {
-                const tab = ref('edit'); // Сразу открываем редактор для проверки
+                const socket = io(); // Инициализация сокета
+                
+                const tab = ref('edit');
                 const guests = ref({});
                 const selectedGuestId = ref(null);
                 const status = ref('');
@@ -181,7 +183,7 @@
                     try {
                         const res = await fetch('/api/guests');
                         guests.value = await res.json();
-                        console.log("Guests loaded:", guests.value);
+                        console.log("Guests updated:", guests.value);
                     } catch (e) {
                         console.error("Load error:", e);
                     }
@@ -190,37 +192,27 @@
                 const saveGuest = async () => {
                     if(!form.value.name) return alert('Введите имя гостя!');
                     
-                    // Создаем объект для отправки
                     const payload = {
                         name: form.value.name,
                         fact1: form.value.fact1 || "",
                         fact2: form.value.fact2 || "",
                         fact3: form.value.fact3 || "",
                         correct: form.value.correct,
-                        id: editId.value // Может быть null, но теперь бэкенд это примет
+                        id: editId.value 
                     };
 
-                    console.log("Отправка данных:", payload);
-                    
                     try {
                         const res = await fetch('/api/guests/save', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify(payload)
                         });
-                        
-                        if (!res.ok) {
-                            // Если ошибка 422 - читаем детали
-                            const errData = await res.json();
-                            console.error("Ошибка сервера:", errData);
-                            alert('Ошибка сохранения! Проверь консоль.');
-                            return;
-                        }
-
                         const data = await res.json();
                         if(data.ok) {
                             clearForm();
                             await loadGuests();
+                        } else {
+                            alert('Ошибка сохранения');
                         }
                     } catch(e) {
                         console.error(e);
@@ -242,7 +234,6 @@
                         fact1: g.facts[1] || '', fact2: g.facts[2] || '', fact3: g.facts[3] || '', 
                         correct: g.correct 
                     };
-                    // Прокрутка вверх
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
 
@@ -261,6 +252,25 @@
                     if(ep === 'reset') status.value = '';
                     else status.value = ep + ' выполнено';
                 };
+
+                // --- ВОТ ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
+                // Слушаем события от сервера
+                socket.on('connect', () => {
+                    console.log("Socket connected");
+                    loadGuests();
+                });
+
+                // Когда кто-то регистрируется в боте, сервер шлет 'player_update'
+                socket.on('player_update', () => {
+                    console.log("Кто-то подключился! Обновляю список...");
+                    loadGuests(); // <-- Принудительно перезагружаем JSON с сервера
+                });
+
+                // Также обновляем при смене статуса игры
+                socket.on('state_update', () => {
+                    loadGuests();
+                });
+                // -------------------------------
 
                 onMounted(loadGuests);
 
