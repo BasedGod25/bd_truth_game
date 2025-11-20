@@ -333,7 +333,35 @@ async def api_reset():
     round_state["status"] = "lobby"
     await sio.emit('state_update', {"status": "lobby"})
     return {"ok": True}
+# ... (предыдущие API методы)
 
+@app.post("/api/hard_reset")
+async def api_hard_reset():
+    print("--- [LOG] Полный сброс игры (Hard Reset) ---")
+    
+    # 1. Обнуляем гостей
+    for g in db.data["guests"].values():
+        g["score"] = 0
+        
+    # 2. Обнуляем зрителей
+    for v in db.data["viewers"].values():
+        v["score"] = 0
+        
+    # 3. Сохраняем
+    db.save()
+    
+    # 4. Сбрасываем состояние раунда
+    round_state["status"] = "lobby"
+    round_state["votes"] = {}
+    
+    # 5. Обновляем экраны
+    await sio.emit('state_update', {"status": "lobby"})
+    # Принудительно обновляем список игроков (там же летят и очки)
+    await sio.emit('player_update', {"count": len(db.get_all_participants())})
+    
+    return {"ok": True}
+
+# ... (app.mount и запуск)
 app.mount("/socket.io", socket_app)
 
 @app.get("/")

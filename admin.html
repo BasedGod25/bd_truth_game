@@ -163,7 +163,34 @@
             </div>
         </div>
     </div>
+    <div v-if="tab === 'live'">
+        <div class="card">
+            <h2>Выбор раунда</h2>
+            <select v-model="selectedGuestId" style="padding: 15px; font-size: 1.1rem;">
+                <option :value="null">Выберите гостя...</option>
+                <option v-for="(g, id) in guests" :key="id" :value="id">
+                    {{ g.name }} {{ g.tg_id ? '✅' : '⚠️ (нет TG)' }}
+                </option>
+            </select>
 
+            <button class="btn green" @click="runRound" :disabled="!selectedGuestId">
+                🚀 Вывести на экран
+            </button>
+        </div>
+
+        <div class="card" v-if="status" style="text-align: center;">
+            <h3>Статус: {{ status }}</h3>
+            <div class="btn-row">
+                <button class="btn" @click="api('start_voting')">▶️ Голосование</button>
+                <button class="btn" style="background: #e67e22" @click="api('reveal')">👀 Вскрыть</button>
+            </div>
+            <button class="btn grey" style="margin-top: 15px;" @click="api('reset')">⏹ Вернуться в Лобби (очки сохранятся)</button>
+        </div>
+
+        <div style="margin-top: 40px; border-top: 1px solid #555; padding-top: 20px;">
+            <button class="btn red" @click="hardReset">💀 ПОЛНЫЙ СБРОС ОЧКОВ (НОВАЯ ИГРА)</button>
+        </div>
+    </div>
     <script>
         const { createApp, ref, onMounted } = Vue;
         createApp({
@@ -280,6 +307,17 @@
                 };
             }
         }).mount('#app');
+
+        const hardReset = async () => {
+            if(!confirm("ВНИМАНИЕ! Это удалит все заработанные очки у всех игроков. Начать новую игру?")) return;
+                await api('hard_reset');
+                alert("Игра обнулена.");
+            };
+
+            return { 
+                // ... остальные переменные ...
+                hardReset 
+            };
     </script>
 </body>
 </html>
