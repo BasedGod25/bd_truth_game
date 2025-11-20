@@ -11,20 +11,19 @@
         body { background-color: #1a1a2e; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; }
         .container { width: 90%; text-align: center; }
         
-        /* Презентация фактов */
+        /* Лобби */
+        .lobby-info { font-size: 2rem; margin-top: 30px; background: rgba(255,255,255,0.1); display: inline-block; padding: 20px 40px; border-radius: 50px; }
+        
+        /* Презентация */
         .author-title { font-size: 3rem; color: #e94560; margin-bottom: 40px; text-transform: uppercase; }
         .facts-container { display: flex; gap: 20px; justify-content: center; }
-        .fact-card { 
-            background: #16213e; border: 2px solid #0f3460; padding: 30px; border-radius: 15px; width: 30%; 
-            font-size: 1.5rem; line-height: 1.4; transition: all 0.5s; position: relative;
-        }
+        .fact-card { background: #16213e; border: 2px solid #0f3460; padding: 30px; border-radius: 15px; width: 30%; font-size: 1.5rem; line-height: 1.4; transition: all 0.5s; position: relative; }
         .fact-number { font-size: 4rem; font-weight: 900; color: #533483; position: absolute; top: -30px; left: 20px; background: #1a1a2e; padding: 0 10px; }
         
-        /* Голосование (Бары) */
+        /* Результаты */
         .vote-area { margin-top: 50px; height: 300px; display: flex; justify-content: space-around; align-items: flex-end; }
         .bar { width: 20%; background: #e94560; transition: height 0.5s; border-radius: 10px 10px 0 0; font-size: 2rem; font-weight: bold; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; min-height: 0px;}
         
-        /* Результат */
         .fact-card.winner { background: #27ae60; border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5); }
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); }
         
@@ -37,8 +36,10 @@
         
         <div v-if="view === 'lobby'">
             <h1 style="font-size: 5rem;">ИГРА В ПРАВДУ</h1>
-            <h2>Присоединяйтесь в Telegram</h2>
-            <div style="margin-top: 50px; font-size: 2rem;">Игроков: {{ playerCount }}</div>
+            <h2>Заходи в Telegram бота</h2>
+            <div class="lobby-info">
+                Игроков в сети: <strong>{{ playerCount }}</strong>
+            </div>
         </div>
 
         <div v-else>
@@ -66,8 +67,8 @@
             </div>
 
             <div v-if="view === 'result'" class="leaderboard">
-                <h3>Топ Угадавших:</h3>
-                <div v-for="(u, i) in leaderboard.slice(0,3)" class="lb-item">
+                <h3>Топ Игроков:</h3>
+                <div v-for="(u, i) in leaderboard.slice(0,5)" class="lb-item">
                     <span>{{ i+1 }}. {{ u.name }}</span>
                     <span>{{ u.score }}</span>
                 </div>
@@ -90,8 +91,27 @@
                 const correct = ref(null);
                 const leaderboard = ref([]);
 
-                socket.on('player_joined', d => playerCount.value = d.count);
+                // --- СОБЫТИЯ ---
                 
+                // 1. Полная синхронизация при входе
+                socket.on('sync_state', d => {
+                    console.log("Sync:", d);
+                    view.value = d.status;
+                    playerCount.value = d.playerCount;
+                    if (d.round_data) {
+                        author.value = d.round_data.author;
+                        facts.value = d.round_data.facts;
+                    }
+                    if (d.votes) votes.value = d.votes;
+                });
+
+                // 2. Обновление счетчика (срабатывает, когда кто-то ввел никнейм)
+                socket.on('player_update', d => {
+                    console.log("New player count:", d.count);
+                    playerCount.value = d.count;
+                });
+                
+                // 3. Смена этапа игры
                 socket.on('state_update', d => {
                     view.value = d.status;
                     if(d.facts) {
@@ -104,14 +124,17 @@
                     }
                 });
 
+                // 4. Живое голосование
                 socket.on('vote_update', d => votes.value = d);
                 
+                // 5. Результаты
                 socket.on('round_result', d => {
                     view.value = 'result';
                     correct.value = d.correct;
                     leaderboard.value = d.leaderboard;
                 });
 
+                // --- ВИЗУАЛ ---
                 const getCardClass = (id) => {
                     if (view.value !== 'result') return '';
                     return id === correct.value ? 'winner' : 'loser';

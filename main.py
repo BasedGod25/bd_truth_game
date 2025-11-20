@@ -2,11 +2,13 @@ import os
 import asyncio
 import socketio
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
 
 # --- КОНФИГУРАЦИЯ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -21,12 +23,16 @@ dp = Dispatcher()
 
 # --- MODELS ---
 class RoundData(BaseModel):
-    author_id: int # ID автора (чтобы начислять очки)
-    author_name: str # Имя для отображения
+    author_id: int
+    author_name: str
     fact1: str
     fact2: str
     fact3: str
     correct: int
+
+# --- FSM (СОСТОЯНИЯ ДИАЛОГА) ---
+class Registration(StatesGroup):
+    waiting_for_nickname = State()
 
 # --- СОСТОЯНИЕ ИГРЫ ---
 game_state = {
@@ -37,14 +43,14 @@ game_state = {
         "facts": {1: "", 2: "", 3: ""},
         "correct": 1
     },
-    "votes": {},    # {user_id: option_number}
+    "votes": {},
     "status": "lobby" 
 }
 
-# --- ЛОГИКА SOCKET.IO (Синхронизация) ---
+# --- SOCKET.IO (ЭКРАН) ---
 @sio.event
 async def connect(sid, environ):
-    # При обновлении страницы отправляем актуальные данные
+    # При подключении экрана отправляем актуальные данные
     await sio.emit('sync_state', {
         "status": game_state["status"],
         "playerCount": len(game_state["players"]),
@@ -52,7 +58,7 @@ async def connect(sid, environ):
             "author": game_state["round_data"]["author_name"],
             "facts": game_state["round_data"]["facts"]
         },
-        "votes": get_vote_counts() # Чтобы графики не падали при рефреше
+        "votes": get_vote_counts()
     }, to=sid)
 
 def get_vote_counts():
@@ -62,15 +68,37 @@ def get_vote_counts():
     return counts
 
 # --- ЛОГИКА БОТА ---
+
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    user = message.from_user
-    # Если игрока нет или он сменил имя - обновляем
-    if user.id not in game_state["players"]:
-        game_state["players"][user.id] = {"name": user.first_name, "score": 0}
-        await sio.emit('player_update', {"count": len(game_state["players"])})
+async def cmd_start(message: types.Message, state: FSMContext):
+    # Запускаем сценарий регистрации
+    await message.answer("Привет! Добро пожаловать в 'Игру в Правду'.\n\nКак тебя называть? Введи свой никнейм:")
+    await state.set_state(Registration.waiting_for_nickname)
+
+@dp.message(Registration.waiting_for_nickname)
+async def process_nickname(message: types.Message, state: FSMContext):
+    nickname = message.text.strip()
     
-    await message.answer(f"Привет, {user.first_name}! Ты в игре. Твой текущий счет: {game_state['players'][user.id]['score']}")
+    # Простая валидация
+    if len(nickname) > 20:
+        await message.answer("Слишком длинное имя! Попробуй короче.")
+        return
+    
+    user_id = message.from_user.id
+    
+    # Если игрока не было - создаем, если был - обновляем имя, но сохраняем очки
+    current_score = 0
+    if user_id in game_state["players"]:
+        current_score = game_state["players"][user_id]["score"]
+
+    game_state["players"][user_id] = {"name": nickname, "score": current_score}
+    
+    await message.answer(f"Отлично, {nickname}! Ты в игре. Смотри на экран.")
+    await state.clear() # Выход из режима ожидания имени
+    
+    # ВАЖНО: Обновляем счетчик на экране мгновенно
+    await sio.emit('player_update', {"count": len(game_state["players"])})
+
 
 @dp.callback_query(F.data.startswith("vote_"))
 async def handle_vote(callback: types.CallbackQuery):
@@ -81,7 +109,11 @@ async def handle_vote(callback: types.CallbackQuery):
     choice = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Автор не может голосовать в своем раунде (опционально)
+    # Проверка, зарегистрирован ли игрок (на всякий случай)
+    if user_id not in game_state["players"]:
+        await callback.answer("Сначала нажми /start и введи имя!", show_alert=True)
+        return
+
     if user_id == game_state["round_data"]["author_id"]:
         await callback.answer("Ты автор, тебе нельзя голосовать!", show_alert=True)
         return
@@ -94,7 +126,6 @@ async def handle_vote(callback: types.CallbackQuery):
 
 @app.get("/api/players")
 async def get_players():
-    # Возвращаем список игроков для админки
     return [{"id": k, "name": v["name"]} for k, v in game_state["players"].items()]
 
 @app.post("/api/prepare")
@@ -124,34 +155,31 @@ async def api_start_voting():
         [InlineKeyboardButton(text="Факт 3", callback_data="vote_3")]
     ])
     
+    count = 0
     for user_id in game_state["players"]:
-        # Не отправляем кнопки автору
         if user_id == game_state["round_data"]["author_id"]:
             continue
         try:
             await bot.send_message(user_id, "Голосуй!", reply_markup=kb)
+            count += 1
         except:
             pass
             
     await sio.emit('state_update', {"status": "voting"})
-    return {"ok": True}
+    return {"sent_to": count}
 
 @app.post("/api/reveal")
 async def api_reveal():
     correct = game_state["round_data"]["correct"]
     author_id = game_state["round_data"]["author_id"]
     
-    # Логика начисления очков
     for voter_id, choice in game_state["votes"].items():
         if choice == correct:
-            # Угадал -> получает очко
             game_state["players"][voter_id]["score"] += 1
         else:
-            # Не угадал -> очко уходит автору
             if author_id in game_state["players"]:
                 game_state["players"][author_id]["score"] += 1
 
-    # Сортировка лидерборда
     leaderboard = sorted(
         [{"name": p["name"], "score": p["score"]} for p in game_state["players"].values()],
         key=lambda x: x["score"], reverse=True
@@ -170,7 +198,7 @@ async def api_reset():
     await sio.emit('state_update', {"status": "lobby"})
     return {"ok": True}
 
-# --- FRONTEND ROUTING ---
+# --- RUN ---
 app.mount("/socket.io", socket_app)
 
 @app.get("/")
@@ -183,7 +211,6 @@ async def admin():
     with open("admin.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
-# --- RUN ---
 @app.on_event("startup")
 async def on_startup():
     asyncio.create_task(dp.start_polling(bot))
