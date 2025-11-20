@@ -148,6 +148,49 @@ async def api_prepare(data: RoundData):
 
 @app.post("/api/start_voting")
 async def api_start_voting():
+    print("--- [DEBUG] Попытка запуска голосования ---")
+    game_state["status"] = "voting"
+    
+    # 1. Проверяем, есть ли вообще игроки
+    players_count = len(game_state["players"])
+    print(f"--- [DEBUG] Игроков в базе памяти: {players_count}")
+    
+    if players_count == 0:
+        print("--- [ERROR] Список игроков пуст! Никто не зарегистрировался после перезагрузки.")
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Факт 1", callback_data="vote_1")],
+        [InlineKeyboardButton(text="Факт 2", callback_data="vote_2")],
+        [InlineKeyboardButton(text="Факт 3", callback_data="vote_3")]
+    ])
+    
+    sent_count = 0
+    author_id = game_state["round_data"]["author_id"]
+
+    for user_id in game_state["players"]:
+        # Приводим к int на всякий случай
+        try:
+            uid = int(user_id)
+        except:
+            continue
+
+        # Пропускаем автора
+        if uid == author_id:
+            print(f"--- [DEBUG] Пропуск автора (ID: {uid})")
+            continue
+            
+        try:
+            await bot.send_message(uid, "Голосование открыто! Какой факт - правда?", reply_markup=kb)
+            sent_count += 1
+            print(f"--- [SUCCESS] Отправлено юзеру {uid}")
+        except Exception as e:
+            # ТЕПЕРЬ МЫ УВИДИМ ОШИБКУ В КОНСОЛИ
+            print(f"--- [ERROR] Не удалось отправить юзеру {uid}: {e}")
+            
+    await sio.emit('state_update', {"status": "voting"})
+    print(f"--- [RESULT] Итог: отправлено {sent_count} сообщений")
+    return {"ok": True, "sent_to": sent_count, "total_players": players_count}
+    
     game_state["status"] = "voting"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Факт 1", callback_data="vote_1")],
