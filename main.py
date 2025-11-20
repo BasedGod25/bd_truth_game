@@ -2,8 +2,7 @@ import os
 import asyncio
 import socketio
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -20,9 +19,10 @@ socket_app = socketio.ASGIApp(sio, app)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- MODELS (Данные от админки) ---
+# --- MODELS ---
 class RoundData(BaseModel):
-    author: str
+    author_id: int # ID автора (чтобы начислять очки)
+    author_name: str # Имя для отображения
     fact1: str
     fact2: str
     fact3: str
@@ -31,23 +31,46 @@ class RoundData(BaseModel):
 # --- СОСТОЯНИЕ ИГРЫ ---
 game_state = {
     "players": {},  # {user_id: {"name": str, "score": 0}}
-    "round_data": { # Текущие факты
-        "author": "",
+    "round_data": { 
+        "author_id": None,
+        "author_name": "",
         "facts": {1: "", 2: "", 3: ""},
         "correct": 1
     },
     "votes": {},    # {user_id: option_number}
-    "status": "lobby" # lobby, presentation, voting, result
+    "status": "lobby" 
 }
+
+# --- ЛОГИКА SOCKET.IO (Синхронизация) ---
+@sio.event
+async def connect(sid, environ):
+    # При обновлении страницы отправляем актуальные данные
+    await sio.emit('sync_state', {
+        "status": game_state["status"],
+        "playerCount": len(game_state["players"]),
+        "round_data": {
+            "author": game_state["round_data"]["author_name"],
+            "facts": game_state["round_data"]["facts"]
+        },
+        "votes": get_vote_counts() # Чтобы графики не падали при рефреше
+    }, to=sid)
+
+def get_vote_counts():
+    counts = {1: 0, 2: 0, 3: 0}
+    for v in game_state["votes"].values():
+        counts[v] += 1
+    return counts
 
 # --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user = message.from_user
+    # Если игрока нет или он сменил имя - обновляем
     if user.id not in game_state["players"]:
         game_state["players"][user.id] = {"name": user.first_name, "score": 0}
-        await sio.emit('player_joined', {"name": user.first_name, "count": len(game_state["players"])})
-    await message.answer(f"Привет, {user.first_name}! Жди начала раунда.")
+        await sio.emit('player_update', {"count": len(game_state["players"])})
+    
+    await message.answer(f"Привет, {user.first_name}! Ты в игре. Твой текущий счет: {game_state['players'][user.id]['score']}")
 
 @dp.callback_query(F.data.startswith("vote_"))
 async def handle_vote(callback: types.CallbackQuery):
@@ -58,32 +81,36 @@ async def handle_vote(callback: types.CallbackQuery):
     choice = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Защита от переголосования (опционально, сейчас разрешим менять голос)
+    # Автор не может голосовать в своем раунде (опционально)
+    if user_id == game_state["round_data"]["author_id"]:
+        await callback.answer("Ты автор, тебе нельзя голосовать!", show_alert=True)
+        return
+
     game_state["votes"][user_id] = choice
-    
-    # Считаем статистику для экрана
-    vote_counts = {1: 0, 2: 0, 3: 0}
-    for v in game_state["votes"].values():
-        vote_counts[v] += 1
-        
-    await sio.emit('vote_update', vote_counts)
+    await sio.emit('vote_update', get_vote_counts())
     await callback.answer(f"Принято: Факт {choice}")
 
-# --- API ДЛЯ АДМИНКИ ---
+# --- API ---
+
+@app.get("/api/players")
+async def get_players():
+    # Возвращаем список игроков для админки
+    return [{"id": k, "name": v["name"]} for k, v in game_state["players"].items()]
 
 @app.post("/api/prepare")
 async def api_prepare(data: RoundData):
-    # Сохраняем данные раунда
-    game_state["round_data"]["author"] = data.author
-    game_state["round_data"]["facts"] = {1: data.fact1, 2: data.fact2, 3: data.fact3}
-    game_state["round_data"]["correct"] = data.correct
+    game_state["round_data"] = {
+        "author_id": data.author_id,
+        "author_name": data.author_name,
+        "facts": {1: data.fact1, 2: data.fact2, 3: data.fact3},
+        "correct": data.correct
+    }
     game_state["status"] = "presentation"
-    game_state["votes"] = {} # Сброс голосов прошлого раунда
+    game_state["votes"] = {} 
 
-    # Обновляем экран: показываем тексты
     await sio.emit('state_update', {
         "status": "presentation",
-        "author": data.author,
+        "author": data.author_name,
         "facts": game_state["round_data"]["facts"]
     })
     return {"ok": True}
@@ -91,35 +118,40 @@ async def api_prepare(data: RoundData):
 @app.post("/api/start_voting")
 async def api_start_voting():
     game_state["status"] = "voting"
-    
-    # Клавиатура
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Факт 1", callback_data="vote_1")],
         [InlineKeyboardButton(text="Факт 2", callback_data="vote_2")],
         [InlineKeyboardButton(text="Факт 3", callback_data="vote_3")]
     ])
     
-    # Рассылка всем игрокам
-    count = 0
     for user_id in game_state["players"]:
+        # Не отправляем кнопки автору
+        if user_id == game_state["round_data"]["author_id"]:
+            continue
         try:
-            await bot.send_message(user_id, "Голосование открыто! Какой факт - правда?", reply_markup=kb)
-            count += 1
+            await bot.send_message(user_id, "Голосуй!", reply_markup=kb)
         except:
             pass
             
-    await sio.emit('state_update', {"status": "voting"}) # Экран меняется на графики
-    return {"sent_to": count}
+    await sio.emit('state_update', {"status": "voting"})
+    return {"ok": True}
 
 @app.post("/api/reveal")
 async def api_reveal():
     correct = game_state["round_data"]["correct"]
-    # Подсчет очков
-    for uid, choice in game_state["votes"].items():
-        if choice == correct:
-            game_state["players"][uid]["score"] += 1
+    author_id = game_state["round_data"]["author_id"]
     
-    # Лидерборд
+    # Логика начисления очков
+    for voter_id, choice in game_state["votes"].items():
+        if choice == correct:
+            # Угадал -> получает очко
+            game_state["players"][voter_id]["score"] += 1
+        else:
+            # Не угадал -> очко уходит автору
+            if author_id in game_state["players"]:
+                game_state["players"][author_id]["score"] += 1
+
+    # Сортировка лидерборда
     leaderboard = sorted(
         [{"name": p["name"], "score": p["score"]} for p in game_state["players"].values()],
         key=lambda x: x["score"], reverse=True
@@ -138,7 +170,7 @@ async def api_reset():
     await sio.emit('state_update', {"status": "lobby"})
     return {"ok": True}
 
-# --- ВЕБ РОУТЫ ---
+# --- FRONTEND ROUTING ---
 app.mount("/socket.io", socket_app)
 
 @app.get("/")
@@ -151,7 +183,7 @@ async def admin():
     with open("admin.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
-# --- ЗАПУСК ---
+# --- RUN ---
 @app.on_event("startup")
 async def on_startup():
     asyncio.create_task(dp.start_polling(bot))
