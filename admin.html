@@ -7,36 +7,76 @@
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --acc: #e94560; --txt: #fff; }
-        body { font-family: 'Montserrat'; background: var(--bg); color: var(--txt); margin: 0; padding: 20px; }
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --acc: #e94560;
+            --green: #27ae60;
+            --txt: #fff;
+        }
+        body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(--txt); margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; }
         
         /* TABS */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { padding: 15px 30px; background: #333; cursor: pointer; border-radius: 8px; font-weight: bold; opacity: 0.6; }
+        .tab { padding: 15px 30px; background: #333; cursor: pointer; border-radius: 8px; font-weight: bold; opacity: 0.6; transition: 0.3s; }
         .tab.active { background: var(--acc); opacity: 1; }
         
         /* CARDS */
-        .card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; }
-        input, textarea { width: 100%; padding: 10px; background: #0f3460; border: 1px solid #333; color: white; margin-bottom: 10px; box-sizing: border-box; border-radius: 4px;}
+        .card { background: var(--card); padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         
-        /* EDITOR LIST */
-        .guest-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); margin-bottom: 5px; border-radius: 4px; cursor: pointer; border: 1px solid transparent;}
-        .guest-item:hover { border-color: var(--acc); }
-        .guest-item.linked { border-left: 4px solid #27ae60; }
+        input, textarea, select {
+            width: 100%; padding: 12px; background: #0f3460; border: 1px solid #333; color: white; margin-bottom: 10px; box-sizing: border-box; border-radius: 6px; font-family: inherit;
+        }
+        input:focus, textarea:focus { outline: 1px solid var(--acc); }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #ccc; }
+
+        /* EDITOR: FACT ROW WITH BIG RADIO BUTTON */
+        .fact-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch; }
+        .fact-input { flex-grow: 1; }
         
-        .btn { padding: 12px; background: var(--acc); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;}
-        .btn.green { background: #27ae60; }
+        .truth-selector {
+            width: 80px;
+            background: #0f3460;
+            border: 1px solid #333;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #777;
+        }
+        .truth-selector:hover { border-color: var(--green); }
+        .truth-selector.selected {
+            background: var(--green);
+            border-color: var(--green);
+            color: white;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+        }
+
+        /* LIST OF GUESTS */
+        .guest-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0,0,0,0.2); margin-bottom: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+        .guest-item:hover { border-color: var(--acc); background: rgba(255,255,255,0.05); }
+        .guest-item.linked { border-left: 4px solid var(--green); }
+        
+        /* BUTTONS */
+        .btn { padding: 12px; background: var(--acc); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; margin-top: 5px; transition: 0.2s; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.green { background: var(--green); }
         .btn.red { background: #c0392b; }
-        .btn.small { width: auto; padding: 5px 10px; font-size: 0.8rem; }
+        .btn.grey { background: #555; }
         
-        .fact-row { display: flex; gap: 10px; align-items: center; }
-        .radio-btn { min-width: 60px; height: 60px; background: #0f3460; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #333; border-radius: 4px;}
-        .radio-btn.active { background: #27ae60; border-color: #fff; }
+        .btn-row { display: flex; gap: 10px; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div id="app" class="container">
+        <h1>🎛 Control Panel</h1>
         <div class="tabs">
             <div class="tab" :class="{active: tab==='live'}" @click="tab='live'">🎥 Эфир</div>
             <div class="tab" :class="{active: tab==='edit'}" @click="tab='edit'">📝 Редактор БД</div>
@@ -44,39 +84,65 @@
 
         <div v-if="tab === 'edit'">
             <div class="card">
-                <h2>{{ editId ? 'Редактировать' : 'Добавить' }} гостя</h2>
-                <label>Имя</label>
-                <input v-model="form.name" placeholder="Например: Сергей">
+                <h2 style="margin-top:0">{{ editId ? 'Редактировать' : 'Создать' }} гостя</h2>
                 
-                <div v-for="i in 3" class="fact-row">
-                    <textarea v-model="form['fact'+i]" rows="2" :placeholder="'Факт '+i"></textarea>
-                    <div class="radio-btn" :class="{active: form.correct === i}" @click="form.correct = i">TRUE</div>
+                <label>Имя Гостя</label>
+                <input v-model="form.name" placeholder="Иван Иванов">
+                
+                <div class="fact-row">
+                    <div class="fact-input">
+                        <label>Факт №1</label>
+                        <textarea v-model="form.fact1" rows="2"></textarea>
+                    </div>
+                    <div class="truth-selector" :class="{selected: form.correct === 1}" @click="form.correct = 1">
+                        <span>✅<br>Это Правда</span>
+                    </div>
+                </div>
+
+                <div class="fact-row">
+                    <div class="fact-input">
+                        <label>Факт №2</label>
+                        <textarea v-model="form.fact2" rows="2"></textarea>
+                    </div>
+                    <div class="truth-selector" :class="{selected: form.correct === 2}" @click="form.correct = 2">
+                        <span>✅<br>Это Правда</span>
+                    </div>
+                </div>
+
+                <div class="fact-row">
+                    <div class="fact-input">
+                        <label>Факт №3</label>
+                        <textarea v-model="form.fact3" rows="2"></textarea>
+                    </div>
+                    <div class="truth-selector" :class="{selected: form.correct === 3}" @click="form.correct = 3">
+                        <span>✅<br>Это Правда</span>
+                    </div>
                 </div>
                 
-                <div style="display: flex; gap: 10px;">
+                <div class="btn-row">
                     <button class="btn green" @click="saveGuest">Сохранить</button>
                     <button v-if="editId" class="btn red" @click="deleteGuest">Удалить</button>
-                    <button class="btn" style="background:#555" @click="clearForm">Отмена</button>
+                    <button class="btn grey" @click="clearForm">Очистить</button>
                 </div>
             </div>
 
-            <h3>Список заготовок:</h3>
+            <h3 style="margin-bottom: 10px;">Список гостей ({{ Object.keys(guests).length }}):</h3>
+            <div v-if="Object.keys(guests).length === 0" style="color: #777; text-align: center;">Список пуст. Добавьте гостей.</div>
+            
             <div v-for="(g, id) in guests" :key="id" class="guest-item" :class="{linked: g.tg_id}" @click="editGuest(id, g)">
                 <div>
-                    <strong>{{ g.name }}</strong>
-                    <span v-if="g.tg_id" style="color: #27ae60; font-size: 0.8rem; margin-left: 10px;">● Linked</span>
+                    <strong style="font-size: 1.1rem;">{{ g.name }}</strong>
+                    <span v-if="g.tg_id" style="color: var(--green); font-size: 0.8rem; margin-left: 10px;">● Linked ({{g.tg_id}})</span>
                 </div>
-                <span style="color: #aaa">✎</span>
+                <span style="color: #aaa">✏️ Ред.</span>
             </div>
         </div>
 
         <div v-if="tab === 'live'">
             <div class="card">
                 <h2>Выбор раунда</h2>
-                <div v-if="Object.keys(guests).length === 0">Нет гостей. Зайди в "Редактор" и добавь.</div>
-                
                 <select v-model="selectedGuestId" style="padding: 15px; font-size: 1.1rem;">
-                    <option :value="null">Выберите, кто сейчас выходит...</option>
+                    <option :value="null">Выберите гостя...</option>
                     <option v-for="(g, id) in guests" :key="id" :value="id">
                         {{ g.name }} {{ g.tg_id ? '✅' : '⚠️ (нет TG)' }}
                     </option>
@@ -87,14 +153,13 @@
                 </button>
             </div>
 
-            <div class="card" v-if="activeGuest">
-                <h3>В эфире: {{ activeGuest.name }}</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="card" v-if="status" style="text-align: center;">
+                <h3>Статус: {{ status }}</h3>
+                <div class="btn-row">
                     <button class="btn" @click="api('start_voting')">▶️ Голосование</button>
                     <button class="btn" style="background: #e67e22" @click="api('reveal')">👀 Вскрыть</button>
                 </div>
-                <button class="btn red" @click="api('reset')">⏹ Сброс в Лобби</button>
-                <p style="text-align: center; margin-top: 10px; color: #777">{{ status }}</p>
+                <button class="btn red" style="margin-top: 15px;" @click="api('reset')">⏹ Сброс в Лобби</button>
             </div>
         </div>
     </div>
@@ -103,34 +168,52 @@
         const { createApp, ref, onMounted } = Vue;
         createApp({
             setup() {
-                const tab = ref('live');
+                const tab = ref('edit'); // Сразу открываем редактор для проверки
                 const guests = ref({});
                 const selectedGuestId = ref(null);
-                const activeGuest = ref(null);
                 const status = ref('');
                 
-                // Форма редактора
+                // Форма
                 const editId = ref(null);
                 const form = ref({ name: '', fact1: '', fact2: '', fact3: '', correct: 1 });
 
                 const loadGuests = async () => {
-                    const res = await fetch('/api/guests');
-                    guests.value = await res.json();
+                    try {
+                        const res = await fetch('/api/guests');
+                        guests.value = await res.json();
+                        console.log("Guests loaded:", guests.value);
+                    } catch (e) {
+                        console.error("Load error:", e);
+                    }
                 };
 
                 const saveGuest = async () => {
-                    if(!form.value.name) return alert('Введи имя!');
-                    await fetch('/api/guests/save', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({...form.value, id: editId.value})
-                    });
-                    clearForm();
-                    loadGuests();
+                    if(!form.value.name) return alert('Введите имя гостя!');
+                    
+                    console.log("Saving guest...", form.value);
+                    
+                    try {
+                        const res = await fetch('/api/guests/save', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({...form.value, id: editId.value})
+                        });
+                        const data = await res.json();
+                        
+                        if(data.ok) {
+                            clearForm();
+                            await loadGuests(); // Обязательно обновляем список
+                        } else {
+                            alert('Ошибка сохранения');
+                        }
+                    } catch(e) {
+                        console.error(e);
+                        alert('Ошибка сети');
+                    }
                 };
                 
                 const deleteGuest = async () => {
-                    if(!confirm('Удалить?')) return;
+                    if(!confirm('Удалить этого гостя?')) return;
                     await fetch('/api/guests/delete/'+editId.value, { method: 'POST' });
                     clearForm();
                     loadGuests();
@@ -140,9 +223,11 @@
                     editId.value = id;
                     form.value = {
                         name: g.name, 
-                        fact1: g.facts[1], fact2: g.facts[2], fact3: g.facts[3], 
+                        fact1: g.facts[1] || '', fact2: g.facts[2] || '', fact3: g.facts[3] || '', 
                         correct: g.correct 
                     };
+                    // Прокрутка вверх
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
 
                 const clearForm = () => {
@@ -151,21 +236,20 @@
                 };
 
                 const runRound = async () => {
-                    activeGuest.value = guests.value[selectedGuestId.value];
                     await fetch('/api/prepare_round/'+selectedGuestId.value, {method:'POST'});
-                    status.value = 'Презентация запущена';
+                    status.value = 'Идет презентация...';
                 };
 
                 const api = async (ep) => {
-                    status.value = '...';
                     await fetch('/api/'+ep, {method:'POST'});
-                    status.value = 'OK';
+                    if(ep === 'reset') status.value = '';
+                    else status.value = ep + ' выполнено';
                 };
 
                 onMounted(loadGuests);
 
                 return { 
-                    tab, guests, form, editId, selectedGuestId, activeGuest, status,
+                    tab, guests, form, editId, selectedGuestId, status,
                     saveGuest, deleteGuest, editGuest, clearForm, runRound, api 
                 };
             }

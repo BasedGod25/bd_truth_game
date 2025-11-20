@@ -14,7 +14,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("Нет токена! Укажи переменную окружения BOT_TOKEN")
 
-# Путь внутри папки, которая прокинута через Docker Volume
 DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "data.json")
 
@@ -24,58 +23,52 @@ socket_app = socketio.ASGIApp(sio, app)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- МЕНЕДЖЕР ДАННЫХ ---
+# --- DATA MANAGER ---
 class DataManager:
     def __init__(self):
         self.ensure_dir()
-        self.data = {
-            "guests": {},   
-            "viewers": {},  
-            "current_round": None
-        }
+        self.data = { "guests": {}, "viewers": {}, "current_round": None }
         self.load()
 
     def ensure_dir(self):
         if not os.path.exists(DATA_DIR):
-            os.makedirs(DATA_DIR)
+            try:
+                os.makedirs(DATA_DIR)
+                print(f"--- [LOG] Создана папка {DATA_DIR}")
+            except Exception as e:
+                print(f"--- [ERROR] Ошибка создания папки: {e}")
 
     def load(self):
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 try:
                     loaded = json.load(f)
-                    self.data.update(loaded) 
-                except: pass
+                    self.data.update(loaded)
+                    print(f"--- [LOG] База загружена. Гостей: {len(self.data['guests'])}")
+                except Exception as e:
+                    print(f"--- [ERROR] Ошибка загрузки JSON: {e}")
     
     def save(self):
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=2)
+        try:
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.data, f, ensure_ascii=False, indent=2)
+            print("--- [LOG] Данные сохранены на диск")
+        except Exception as e:
+            print(f"--- [ERROR] Не удалось сохранить файл: {e}")
 
     def get_all_participants(self):
         participants = []
-        # Гости
         for g_id, g in self.data["guests"].items():
             if g.get("tg_id") or g.get("score", 0) > 0:
                 participants.append({"id": g_id, "name": g["name"], "score": g.get("score", 0)})
-        # Зрители
         for v_id, v in self.data["viewers"].items():
             participants.append({"id": v_id, "name": v["name"], "score": v.get("score", 0)})
-            
         return sorted(participants, key=lambda x: x["score"], reverse=True)
 
 db = DataManager()
 round_state = {"votes": {}, "status": "lobby"} 
 
-# --- КЛАВИАТУРЫ ---
-def get_main_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🔄 Сменить профиль/имя")]
-        ],
-        resize_keyboard=True
-    )
-
-# --- SOCKET IO ---
+# --- SOCKET & HELPER FUNCTIONS ---
 @sio.event
 async def connect(sid, environ):
     current_rd = db.data.get("current_round")
@@ -109,92 +102,72 @@ def get_breakdown():
             bd[choice].append(name)
     return bd
 
-# --- БОТ: ЛОГИКА ---
+def get_main_menu():
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🔄 Сменить профиль/имя")]], resize_keyboard=True)
 
+# --- BOT LOGIC ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    tg_id = message.from_user.id
-    tg_id_str = str(tg_id)
-    
-    # 1. Проверка регистрации
+    tg_id = str(message.from_user.id)
     registered_name = None
     
-    # Ищем в зрителях
-    if tg_id_str in db.data["viewers"]:
-        registered_name = db.data['viewers'][tg_id_str]['name']
-        
-    # Ищем в гостях
-    if not registered_name:
+    if tg_id in db.data["viewers"]:
+        registered_name = db.data['viewers'][tg_id]['name']
+    else:
         for g in db.data["guests"].values():
-            if g.get("tg_id") == tg_id:
+            if str(g.get("tg_id")) == tg_id:
                 registered_name = g['name']
                 break
 
     if registered_name:
-        await message.answer(f"Привет, {registered_name}! Ты в игре.", reply_markup=get_main_menu())
+        await message.answer(f"Привет, {registered_name}!", reply_markup=get_main_menu())
         return
 
-    # 2. Если не зарегистрирован - меню выбора
     available_guests = []
     for g_id, g in db.data["guests"].items():
-        if not g.get("tg_id"): # Только свободные профили
+        if not g.get("tg_id"):
             available_guests.append(InlineKeyboardButton(text=f"Я — {g['name']}", callback_data=f"link_{g_id}"))
     
     kb_rows = []
     for i in range(0, len(available_guests), 2):
         kb_rows.append(available_guests[i:i+2])
-    
     kb_rows.append([InlineKeyboardButton(text="👁 Я просто зритель", callback_data="link_viewer")])
     
-    await message.answer(
-        f"Привет, {message.from_user.first_name}!\nВыбери свой профиль:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows)
-    )
+    await message.answer(f"Выбери свой профиль:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
 
-# Обработка кнопки "Сменить профиль"
 @dp.message(F.text == "🔄 Сменить профиль/имя")
 async def cmd_reset_profile(message: types.Message):
     tg_id = message.from_user.id
     tg_id_str = str(tg_id)
-    found = False
     
-    # Удаляем из зрителей
     if tg_id_str in db.data["viewers"]:
         del db.data["viewers"][tg_id_str]
-        found = True
         
-    # Удаляем привязку у гостя (но не удаляем самого гостя из базы!)
     for g in db.data["guests"].values():
-        if g.get("tg_id") == tg_id:
+        if str(g.get("tg_id")) == tg_id_str:
             g["tg_id"] = None
-            found = True
             
     db.save()
-    
-    # Обновляем счетчик на экране
     await sio.emit('player_update', {"count": len(db.get_all_participants())})
-    
     await message.answer("Профиль сброшен.", reply_markup=types.ReplyKeyboardRemove())
-    # Запускаем регистрацию заново
     await cmd_start(message)
-
 
 @dp.callback_query(F.data.startswith("link_"))
 async def handle_link(callback: types.CallbackQuery):
     action = callback.data.split("_")[1]
-    tg_id = callback.from_user.id
+    tg_id = str(callback.from_user.id)
     
     if action == "viewer":
         name = callback.from_user.first_name
-        db.data["viewers"][str(tg_id)] = {"name": name, "score": 0}
+        db.data["viewers"][tg_id] = {"name": name, "score": 0}
         role = "Зритель"
     else:
         guest_id = action
         if guest_id in db.data["guests"]:
             if db.data["guests"][guest_id].get("tg_id"):
-                await callback.answer("Уже занято!", show_alert=True)
+                await callback.answer("Занято!", show_alert=True)
                 return
-            db.data["guests"][guest_id]["tg_id"] = tg_id
+            db.data["guests"][guest_id]["tg_id"] = int(tg_id)
             role = db.data["guests"][guest_id]["name"]
         else:
             await callback.answer("Ошибка", show_alert=True)
@@ -202,36 +175,31 @@ async def handle_link(callback: types.CallbackQuery):
             
     db.save()
     await sio.emit('player_update', {"count": len(db.get_all_participants())})
-    
-    # Удаляем инлайн кнопки и показываем меню
-    await callback.message.delete() 
-    await callback.message.answer(f"Успешно! Ты: **{role}**", reply_markup=get_main_menu())
+    await callback.message.delete()
+    await callback.message.answer(f"Ты: **{role}**", reply_markup=get_main_menu())
 
 @dp.callback_query(F.data.startswith("vote_"))
 async def handle_vote(callback: types.CallbackQuery):
     if round_state["status"] != "voting":
-        await callback.answer("Голосование закрыто!", show_alert=True)
+        await callback.answer("Закрыто", show_alert=True)
         return
-
     choice = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     
-    # Проверка автора
+    # Check Author
     current_author_tg = None
     cur_round = db.data.get("current_round")
     if cur_round:
-        for g in db.data["guests"].values():
-            if g["name"] == cur_round["author"]:
-                current_author_tg = g.get("tg_id")
-                break
+        guest = db.data["guests"].get(cur_round["author_id"])
+        if guest: current_author_tg = guest.get("tg_id")
     
     if current_author_tg == user_id:
-         await callback.answer("Нельзя голосовать в своём раунде!", show_alert=True)
+         await callback.answer("Автор не голосует!", show_alert=True)
          return
 
     round_state["votes"][user_id] = choice
     await sio.emit('vote_update', get_vote_counts())
-    await callback.answer(f"Принято: Факт {choice}")
+    await callback.answer(f"Выбрано: Факт {choice}")
 
 # --- API ---
 class GuestModel(BaseModel):
@@ -249,8 +217,10 @@ async def get_guests():
 @app.post("/api/guests/save")
 async def save_guest(guest: GuestModel):
     import uuid
+    print(f"--- [LOG] Получен запрос на сохранение: {guest.name}")
     g_id = guest.id or str(uuid.uuid4())
     existing = db.data["guests"].get(g_id, {})
+    
     db.data["guests"][g_id] = {
         "name": guest.name,
         "facts": {1: guest.fact1, 2: guest.fact2, 3: guest.fact3},
@@ -259,6 +229,7 @@ async def save_guest(guest: GuestModel):
         "score": existing.get("score", 0)
     }
     db.save()
+    print(f"--- [LOG] Гость {guest.name} сохранен. ID: {g_id}")
     return {"ok": True, "id": g_id}
 
 @app.post("/api/guests/delete/{g_id}")
@@ -272,22 +243,15 @@ async def delete_guest(g_id: str):
 async def prepare_round(g_id: str):
     guest = db.data["guests"].get(g_id)
     if not guest: return {"error": "Not found"}
-    
     round_data = {
-        "author_id": g_id,
-        "author": guest["name"],
-        "facts": guest["facts"],
-        "correct": guest["correct"]
+        "author_id": g_id, "author": guest["name"],
+        "facts": guest["facts"], "correct": guest["correct"]
     }
     db.data["current_round"] = round_data
     db.save()
     round_state["status"] = "presentation"
     round_state["votes"] = {}
-    await sio.emit('state_update', {
-        "status": "presentation",
-        "author": round_data["author"],
-        "facts": round_data["facts"]
-    })
+    await sio.emit('state_update', {"status": "presentation", "author": round_data["author"], "facts": round_data["facts"]})
     return {"ok": True}
 
 @app.post("/api/start_voting")
@@ -305,19 +269,18 @@ async def api_start_voting():
          guest = db.data["guests"].get(cur_round["author_id"])
          if guest: current_author_tg = guest.get("tg_id")
 
-    count = 0
-    targets = list(db.data["viewers"].keys()) + [g["tg_id"] for g in db.data["guests"].values() if g.get("tg_id")]
-    
-    for tg_id in targets:
-        if not tg_id: continue
-        if tg_id == current_author_tg: continue
+    targets = list(db.data["viewers"].keys()) + [str(g["tg_id"]) for g in db.data["guests"].values() if g.get("tg_id")]
+    sent = 0
+    for tg_id in set(targets): # set для уникальности
+        if not tg_id or tg_id == "None": continue
+        if current_author_tg and str(tg_id) == str(current_author_tg): continue
         try:
             await bot.send_message(tg_id, "Голосование открыто!", reply_markup=kb)
-            count += 1
-        except: pass
+            sent += 1
+        except Exception as e: print(f"Error sending to {tg_id}: {e}")
             
     await sio.emit('state_update', {"status": "voting"})
-    return {"sent_to": count}
+    return {"sent_to": sent}
 
 @app.post("/api/reveal")
 async def api_reveal():
@@ -336,9 +299,11 @@ async def api_reveal():
                     if is_correct: g["score"] = g.get("score", 0) + 1
                     break
     
+    # Автор получает баллы за ошибки
     total_votes = len(round_state["votes"])
     correct_votes = list(round_state["votes"].values()).count(correct)
     wrong_votes = total_votes - correct_votes
+    
     if author_g_id in db.data["guests"]:
          db.data["guests"][author_g_id]["score"] = db.data["guests"][author_g_id].get("score", 0) + wrong_votes
 
@@ -361,7 +326,6 @@ app.mount("/socket.io", socket_app)
 @app.get("/")
 async def index():
     with open("index.html", "r", encoding="utf-8") as f: return HTMLResponse(f.read())
-
 @app.get("/admin")
 async def admin():
     with open("admin.html", "r", encoding="utf-8") as f: return HTMLResponse(f.read())
