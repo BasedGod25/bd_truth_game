@@ -2,303 +2,171 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
+    <title>Game Admin</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-    
     <style>
-        :root {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --text-color: #e0e0e0;
-            --accent-color: #e94560;
-            --success-color: #27ae60;
-            --input-bg: #0f3460;
-            --border-color: #533483;
-        }
-
-        body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px;
-            max-width: 700px;
-            margin: 0 auto;
-        }
-
-        h1 { text-align: center; color: var(--accent-color); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px; }
-        h2 { font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
-
-        /* Карточки */
-        .card {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            margin-bottom: 25px;
-            border: 1px solid transparent;
-            transition: background 0.5s;
-        }
-
-        /* Поля ввода */
-        label { font-weight: 600; display: block; margin-bottom: 8px; color: #aeb6bf; }
+        :root { --bg: #1a1a2e; --card: #16213e; --acc: #e94560; --txt: #fff; }
+        body { font-family: 'Montserrat'; background: var(--bg); color: var(--txt); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
         
-        input, textarea, select {
-            width: 100%;
-            padding: 12px;
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: white;
-            border-radius: 6px;
-            font-family: inherit;
-            box-sizing: border-box;
-            transition: border 0.3s;
-        }
+        /* TABS */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { padding: 15px 30px; background: #333; cursor: pointer; border-radius: 8px; font-weight: bold; opacity: 0.6; }
+        .tab.active { background: var(--acc); opacity: 1; }
         
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--accent-color);
-        }
-
-        /* Кнопки действий */
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .btn-full { width: 100%; margin-top: 10px; }
-
-        button {
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            text-transform: uppercase;
-            transition: transform 0.1s, opacity 0.2s;
-            color: white;
-        }
-        button:active { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* CARDS */
+        .card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; }
+        input, textarea { width: 100%; padding: 10px; background: #0f3460; border: 1px solid #333; color: white; margin-bottom: 10px; box-sizing: border-box; border-radius: 4px;}
         
-        .btn-primary { background: var(--border-color); }
-        .btn-accent { background: var(--accent-color); }
-        .btn-green { background: var(--success-color); }
-        .btn-reset { background: #34495e; }
-        .btn-primary:hover { background: #6a45a3; }
-
-        /* --- НОВЫЙ ДИЗАЙН СТРОКИ ФАКТА --- */
-        .fact-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            align-items: stretch;
-        }
-
-        .fact-input-area {
-            flex-grow: 1;
-        }
-
-        /* Правая часть - кнопка выбора правды */
-        .truth-selector {
-            width: 80px;
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #666;
-        }
+        /* EDITOR LIST */
+        .guest-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); margin-bottom: 5px; border-radius: 4px; cursor: pointer; border: 1px solid transparent;}
+        .guest-item:hover { border-color: var(--acc); }
+        .guest-item.linked { border-left: 4px solid #27ae60; }
         
-        .truth-selector:hover { border-color: var(--success-color); }
+        .btn { padding: 12px; background: var(--acc); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;}
+        .btn.green { background: #27ae60; }
+        .btn.red { background: #c0392b; }
+        .btn.small { width: auto; padding: 5px 10px; font-size: 0.8rem; }
         
-        /* Состояние выбранного факта */
-        .truth-selector.selected {
-            background: var(--success-color);
-            border-color: var(--success-color);
-            color: white;
-            box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
-        }
-
-        .truth-selector i { font-size: 1.5rem; margin-bottom: 5px; display: block; }
-        
-        /* Скрываем стандартный радиобаттон */
-        .hidden-radio { display: none; }
-
-        /* Статус бар */
-        .status-bar {
-            text-align: center;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            margin-top: 20px;
-            padding: 10px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 50px;
-        }
-
-        /* Анимация обновления списка */
-        @keyframes flashGreen {
-            0% { background-color: rgba(39, 174, 96, 0.4); }
-            100% { background-color: var(--card-bg); }
-        }
-        .updated-flash { animation: flashGreen 1s ease-out; }
-        
-        /* Хедер выбора автора */
-        .author-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .badge { background: var(--accent-color); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
-
+        .fact-row { display: flex; gap: 10px; align-items: center; }
+        .radio-btn { min-width: 60px; height: 60px; background: #0f3460; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #333; border-radius: 4px;}
+        .radio-btn.active { background: #27ae60; border-color: #fff; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <h1>🎛 Админка для игры в правду</h1>
-        
-        <div class="card" :class="{ 'updated-flash': isListUpdated }">
-            <h2>1. Настройка раунда</h2>
-            
-            <div class="author-header">
-                <label style="margin:0">Автор истории</label>
-                <span v-if="isListUpdated" class="badge">Обновлено!</span>
-            </div>
-            
-            <select v-model="selectedAuthorId" style="margin-bottom: 20px;">
-                <option :value="null" disabled>Выберите игрока из списка...</option>
-                <option v-for="p in players" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
-            <div v-if="players.length === 0" style="color: #e74c3c; font-size: 0.8rem; margin-bottom: 15px;">
-                ⚠️ Нет игроков. Попросите гостей нажать /start в боте.
-            </div>
-            
-            <div class="fact-row">
-                <div class="fact-input-area">
-                    <label>Факт №1</label>
-                    <textarea v-model="form.fact1" rows="2" placeholder="Введите текст..."></textarea>
-                </div>
-                <div class="truth-selector" :class="{ selected: form.correct === 1 }" @click="form.correct = 1">
-                    <span>✅<br>Это Правда</span>
-                </div>
-            </div>
-
-            <div class="fact-row">
-                <div class="fact-input-area">
-                    <label>Факт №2</label>
-                    <textarea v-model="form.fact2" rows="2" placeholder="Введите текст..."></textarea>
-                </div>
-                <div class="truth-selector" :class="{ selected: form.correct === 2 }" @click="form.correct = 2">
-                    <span>✅<br>Это Правда</span>
-                </div>
-            </div>
-
-            <div class="fact-row">
-                <div class="fact-input-area">
-                    <label>Факт №3</label>
-                    <textarea v-model="form.fact3" rows="2" placeholder="Введите текст..."></textarea>
-                </div>
-                <div class="truth-selector" :class="{ selected: form.correct === 3 }" @click="form.correct = 3">
-                    <span>✅<br>Это Правда</span>
-                </div>
-            </div>
-
-            <button class="btn-primary btn-full" @click="prepareRound" :disabled="!selectedAuthorId">
-                📡 Отправить на экран (Презентация)
-            </button>
+    <div id="app" class="container">
+        <div class="tabs">
+            <div class="tab" :class="{active: tab==='live'}" @click="tab='live'">🎥 Эфир</div>
+            <div class="tab" :class="{active: tab==='edit'}" @click="tab='edit'">📝 Редактор БД</div>
         </div>
 
-        <div class="card">
-            <h2>2. Эфир</h2>
-            <div class="btn-grid">
-                <button class="btn-green" @click="startVoting">▶️ Старт Голосования</button>
-                <button class="btn-accent" @click="reveal">👀 Результат</button>
+        <div v-if="tab === 'edit'">
+            <div class="card">
+                <h2>{{ editId ? 'Редактировать' : 'Добавить' }} гостя</h2>
+                <label>Имя</label>
+                <input v-model="form.name" placeholder="Например: Сергей">
+                
+                <div v-for="i in 3" class="fact-row">
+                    <textarea v-model="form['fact'+i]" rows="2" :placeholder="'Факт '+i"></textarea>
+                    <div class="radio-btn" :class="{active: form.correct === i}" @click="form.correct = i">TRUE</div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn green" @click="saveGuest">Сохранить</button>
+                    <button v-if="editId" class="btn red" @click="deleteGuest">Удалить</button>
+                    <button class="btn" style="background:#555" @click="clearForm">Отмена</button>
+                </div>
             </div>
-            <button class="btn-reset btn-full" @click="reset">🔄 Сброс (В Лобби)</button>
+
+            <h3>Список заготовок:</h3>
+            <div v-for="(g, id) in guests" :key="id" class="guest-item" :class="{linked: g.tg_id}" @click="editGuest(id, g)">
+                <div>
+                    <strong>{{ g.name }}</strong>
+                    <span v-if="g.tg_id" style="color: #27ae60; font-size: 0.8rem; margin-left: 10px;">● Linked</span>
+                </div>
+                <span style="color: #aaa">✎</span>
+            </div>
         </div>
-        
-        <div class="status-bar">
-            Статус: {{ connectionStatus }} | Ответ сервера: {{ status }}
+
+        <div v-if="tab === 'live'">
+            <div class="card">
+                <h2>Выбор раунда</h2>
+                <div v-if="Object.keys(guests).length === 0">Нет гостей. Зайди в "Редактор" и добавь.</div>
+                
+                <select v-model="selectedGuestId" style="padding: 15px; font-size: 1.1rem;">
+                    <option :value="null">Выберите, кто сейчас выходит...</option>
+                    <option v-for="(g, id) in guests" :key="id" :value="id">
+                        {{ g.name }} {{ g.tg_id ? '✅' : '⚠️ (нет TG)' }}
+                    </option>
+                </select>
+
+                <button class="btn green" @click="runRound" :disabled="!selectedGuestId">
+                    🚀 Вывести на экран
+                </button>
+            </div>
+
+            <div class="card" v-if="activeGuest">
+                <h3>В эфире: {{ activeGuest.name }}</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="btn" @click="api('start_voting')">▶️ Голосование</button>
+                    <button class="btn" style="background: #e67e22" @click="api('reveal')">👀 Вскрыть</button>
+                </div>
+                <button class="btn red" @click="api('reset')">⏹ Сброс в Лобби</button>
+                <p style="text-align: center; margin-top: 10px; color: #777">{{ status }}</p>
+            </div>
         </div>
     </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
-        
         createApp({
             setup() {
-                const socket = io();
+                const tab = ref('live');
+                const guests = ref({});
+                const selectedGuestId = ref(null);
+                const activeGuest = ref(null);
+                const status = ref('');
                 
-                const status = ref('Ожидание...');
-                const connectionStatus = ref('Подключение...');
-                const players = ref([]);
-                const selectedAuthorId = ref(null);
-                const isListUpdated = ref(false);
+                // Форма редактора
+                const editId = ref(null);
+                const form = ref({ name: '', fact1: '', fact2: '', fact3: '', correct: 1 });
+
+                const loadGuests = async () => {
+                    const res = await fetch('/api/guests');
+                    guests.value = await res.json();
+                };
+
+                const saveGuest = async () => {
+                    if(!form.value.name) return alert('Введи имя!');
+                    await fetch('/api/guests/save', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({...form.value, id: editId.value})
+                    });
+                    clearForm();
+                    loadGuests();
+                };
                 
-                const form = ref({
-                    fact1: '', fact2: '', fact3: '', correct: 1
-                });
-
-                const fetchPlayers = async () => {
-                    try {
-                        const res = await fetch('/api/players');
-                        const data = await res.json();
-                        if (JSON.stringify(data) !== JSON.stringify(players.value)) {
-                            players.value = data;
-                            triggerFlash();
-                        }
-                    } catch (e) { console.error(e); }
+                const deleteGuest = async () => {
+                    if(!confirm('Удалить?')) return;
+                    await fetch('/api/guests/delete/'+editId.value, { method: 'POST' });
+                    clearForm();
+                    loadGuests();
                 };
 
-                const triggerFlash = () => {
-                    isListUpdated.value = true;
-                    setTimeout(() => isListUpdated.value = false, 1000);
-                };
-
-                const api = async (endpoint, body = {}) => {
-                    status.value = '...';
-                    try {
-                        const res = await fetch('/api/' + endpoint, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(body)
-                        });
-                        const data = await res.json();
-                        status.value = data.sent_to !== undefined ? `Отправлено: ${data.sent_to}` : 'OK';
-                    } catch (e) {
-                        status.value = 'Ошибка';
-                    }
-                };
-
-                const prepareRound = () => {
-                    const authorObj = players.value.find(p => p.id === selectedAuthorId.value);
-                    const payload = {
-                        ...form.value,
-                        author_id: selectedAuthorId.value,
-                        author_name: authorObj ? authorObj.name : 'Unknown'
+                const editGuest = (id, g) => {
+                    editId.value = id;
+                    form.value = {
+                        name: g.name, 
+                        fact1: g.facts[1], fact2: g.facts[2], fact3: g.facts[3], 
+                        correct: g.correct 
                     };
-                    api('prepare', payload);
                 };
 
-                socket.on('connect', () => {
-                    connectionStatus.value = '🟢 Online';
-                    fetchPlayers();
-                });
-                
-                socket.on('disconnect', () => connectionStatus.value = '🔴 Offline');
-                socket.on('player_update', fetchPlayers);
-                socket.on('sync_state', fetchPlayers);
+                const clearForm = () => {
+                    editId.value = null;
+                    form.value = { name: '', fact1: '', fact2: '', fact3: '', correct: 1 };
+                };
 
-                onMounted(fetchPlayers);
+                const runRound = async () => {
+                    activeGuest.value = guests.value[selectedGuestId.value];
+                    await fetch('/api/prepare_round/'+selectedGuestId.value, {method:'POST'});
+                    status.value = 'Презентация запущена';
+                };
 
-                return {
-                    form, status, connectionStatus, players, selectedAuthorId, isListUpdated,
-                    prepareRound,
-                    startVoting: () => api('start_voting'),
-                    reveal: () => api('reveal'),
-                    reset: () => api('reset')
+                const api = async (ep) => {
+                    status.value = '...';
+                    await fetch('/api/'+ep, {method:'POST'});
+                    status.value = 'OK';
+                };
+
+                onMounted(loadGuests);
+
+                return { 
+                    tab, guests, form, editId, selectedGuestId, activeGuest, status,
+                    saveGuest, deleteGuest, editGuest, clearForm, runRound, api 
                 };
             }
         }).mount('#app');
