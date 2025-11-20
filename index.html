@@ -6,91 +6,70 @@
     <title>Birthday Show</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            background-color: #1a1a2e;
-            color: #fff;
-            font-family: 'Montserrat', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        .container { text-align: center; width: 80%; }
-        h1 { font-size: 4rem; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 5px; }
+        body { background-color: #1a1a2e; color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container { width: 90%; text-align: center; }
         
-        /* Карточки голосования */
-        .vote-bars { display: flex; justify-content: space-around; margin-top: 50px; height: 400px; align-items: flex-end; }
-        .bar-container { width: 20%; text-align: center; }
-        .bar {
-            background: linear-gradient(to top, #e94560, #ff2e63);
-            width: 100%;
-            border-radius: 10px 10px 0 0;
-            transition: height 0.5s ease, background 0.5s;
-            min-height: 10px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
-            padding-bottom: 10px;
+        /* Презентация фактов */
+        .author-title { font-size: 3rem; color: #e94560; margin-bottom: 40px; text-transform: uppercase; }
+        .facts-container { display: flex; gap: 20px; justify-content: center; }
+        .fact-card { 
+            background: #16213e; border: 2px solid #0f3460; padding: 30px; border-radius: 15px; width: 30%; 
+            font-size: 1.5rem; line-height: 1.4; transition: all 0.5s; position: relative;
         }
-        .label { font-size: 2rem; margin-top: 10px; font-weight: bold; }
-
-        /* Состояние ПРАВИЛЬНОГО ответа */
-        .bar.correct { background: #0f3460 !important; box-shadow: 0 0 20px #0f3460; }
-        .bar.wrong { opacity: 0.3; }
-
-        /* Лобби */
-        .lobby-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
-        .player-tag { background: #16213e; padding: 10px 20px; border-radius: 20px; font-size: 1.5rem; animation: popIn 0.3s ease; }
+        .fact-number { font-size: 4rem; font-weight: 900; color: #533483; position: absolute; top: -30px; left: 20px; background: #1a1a2e; padding: 0 10px; }
         
-        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        /* Голосование (Бары) */
+        .vote-area { margin-top: 50px; height: 300px; display: flex; justify-content: space-around; align-items: flex-end; }
+        .bar { width: 20%; background: #e94560; transition: height 0.5s; border-radius: 10px 10px 0 0; font-size: 2rem; font-weight: bold; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; min-height: 0px;}
+        
+        /* Результат */
+        .fact-card.winner { background: #27ae60; border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5); }
+        .fact-card.loser { opacity: 0.3; filter: grayscale(1); }
+        
+        .leaderboard { margin-top: 30px; font-size: 1.2rem; }
+        .lb-item { background: rgba(255,255,255,0.1); margin: 5px auto; width: 50%; padding: 10px; border-radius: 10px; display: flex; justify-content: space-between;}
     </style>
 </head>
 <body>
     <div id="app" class="container">
         
         <div v-if="view === 'lobby'">
-            <h1>Присоединяйтесь!</h1>
-            <h2>Игроков: {{ playerCount }}</h2>
-            <div class="lobby-list">
-                <div v-for="p in lastJoined" :key="p" class="player-tag">{{ p }}</div>
-            </div>
-            <p style="opacity: 0.5; margin-top: 50px;">Ищите бота в Telegram...</p>
+            <h1 style="font-size: 5rem;">ИГРА В ПРАВДУ</h1>
+            <h2>Присоединяйтесь в Telegram</h2>
+            <div style="margin-top: 50px; font-size: 2rem;">Игроков: {{ playerCount }}</div>
         </div>
 
-        <div v-else-if="view === 'voting' || view === 'result'">
-            <h1>Голосование</h1>
-            <div class="vote-bars">
-                <div class="bar-container">
-                    <div class="bar" :class="getResultClass(1)" :style="{ height: getBarHeight(1) }">
-                        {{ votes[1] }}
-                    </div>
-                    <div class="label">ФАКТ 1</div>
+        <div v-else>
+            <div class="author-title">Автор: {{ author }}</div>
+            
+            <div class="facts-container">
+                <div class="fact-card" :class="getCardClass(1)">
+                    <div class="fact-number">1</div>
+                    {{ facts[1] }}
                 </div>
-                <div class="bar-container">
-                    <div class="bar" :class="getResultClass(2)" :style="{ height: getBarHeight(2) }">
-                        {{ votes[2] }}
-                    </div>
-                    <div class="label">ФАКТ 2</div>
+                <div class="fact-card" :class="getCardClass(2)">
+                    <div class="fact-number">2</div>
+                    {{ facts[2] }}
                 </div>
-                <div class="bar-container">
-                    <div class="bar" :class="getResultClass(3)" :style="{ height: getBarHeight(3) }">
-                        {{ votes[3] }}
-                    </div>
-                    <div class="label">ФАКТ 3</div>
+                <div class="fact-card" :class="getCardClass(3)">
+                    <div class="fact-number">3</div>
+                    {{ facts[3] }}
                 </div>
             </div>
-            
-            <div v-if="view === 'result'" style="margin-top: 30px;">
-                <h2>Лидеры:</h2>
-                <div v-for="(user, idx) in leaderboard.slice(0, 3)" style="font-size: 1.5rem;">
-                    {{ idx + 1 }}. {{ user.name }} — {{ user.score }} очков
+
+            <div v-if="view === 'voting' || view === 'result'" class="vote-area">
+                <div class="bar" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div>
+                <div class="bar" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div>
+                <div class="bar" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div>
+            </div>
+
+            <div v-if="view === 'result'" class="leaderboard">
+                <h3>Топ Угадавших:</h3>
+                <div v-for="(u, i) in leaderboard.slice(0,3)" class="lb-item">
+                    <span>{{ i+1 }}. {{ u.name }}</span>
+                    <span>{{ u.score }}</span>
                 </div>
             </div>
         </div>
@@ -99,57 +78,51 @@
 
     <script>
         const { createApp, ref } = Vue;
-        const socket = io(); // Подключение к серверу
+        const socket = io();
 
         createApp({
             setup() {
-                const view = ref('lobby'); // lobby, voting, result
+                const view = ref('lobby');
                 const playerCount = ref(0);
-                const lastJoined = ref([]);
-                const votes = ref({1: 0, 2: 0, 3: 0});
-                const correctOption = ref(null);
+                const author = ref('');
+                const facts = ref({1:'', 2:'', 3:''});
+                const votes = ref({1:0, 2:0, 3:0});
+                const correct = ref(null);
                 const leaderboard = ref([]);
 
-                // --- Обработка событий от сервера ---
+                socket.on('player_joined', d => playerCount.value = d.count);
                 
-                socket.on('player_joined', (data) => {
-                    playerCount.value = data.count;
-                    lastJoined.value.push(data.name);
-                });
-
-                socket.on('state_update', (data) => {
-                    view.value = data.status;
-                    if (data.status === 'voting') {
-                        // Сброс для нового раунда
-                        votes.value = {1: 0, 2: 0, 3: 0};
-                        correctOption.value = null;
+                socket.on('state_update', d => {
+                    view.value = d.status;
+                    if(d.facts) {
+                        author.value = d.author;
+                        facts.value = d.facts;
+                    }
+                    if (d.status === 'presentation') {
+                        votes.value = {1:0, 2:0, 3:0};
+                        correct.value = null;
                     }
                 });
 
-                socket.on('vote_update', (data) => {
-                    votes.value = data;
-                });
-
-                socket.on('round_result', (data) => {
+                socket.on('vote_update', d => votes.value = d);
+                
+                socket.on('round_result', d => {
                     view.value = 'result';
-                    correctOption.value = data.correct;
-                    leaderboard.value = data.leaderboard;
+                    correct.value = d.correct;
+                    leaderboard.value = d.leaderboard;
                 });
 
-                // Вспомогательные функции для CSS
-                const getBarHeight = (id) => {
-                    const max = Math.max(votes.value[1], votes.value[2], votes.value[3], 1); // Чтобы не делить на 0
-                    const count = votes.value[id];
-                    return (count / max * 300) + 50 + 'px'; // Мин высота 50px
-                };
-
-                const getResultClass = (id) => {
+                const getCardClass = (id) => {
                     if (view.value !== 'result') return '';
-                    if (id === correctOption.value) return 'correct';
-                    return 'wrong';
+                    return id === correct.value ? 'winner' : 'loser';
                 };
 
-                return { view, playerCount, lastJoined, votes, getBarHeight, getResultClass, leaderboard };
+                const getBarHeight = (id) => {
+                    const max = Math.max(Math.max(...Object.values(votes.value)), 1);
+                    return (votes.value[id] / max * 250) + 'px';
+                };
+
+                return { view, playerCount, author, facts, votes, leaderboard, getCardClass, getBarHeight };
             }
         }).mount('#app');
     </script>
