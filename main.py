@@ -2,8 +2,10 @@ import os
 import json
 import asyncio
 import socketio
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from typing import Optional # <--- ВАЖНЫЙ ИМПОРТ
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -22,6 +24,16 @@ sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 socket_app = socketio.ASGIApp(sio, app)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+# --- ОБРАБОТЧИК ОШИБОК ВАЛИДАЦИИ (ЧТОБЫ ВИДЕТЬ ПОЧЕМУ 422) ---
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"--- [ERROR 422] Ошибка валидации данных: {exc.errors()}")
+    print(f"--- [ERROR 422] Тело запроса: {await request.body()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc)},
+    )
 
 # --- DATA MANAGER ---
 class DataManager:
@@ -202,13 +214,14 @@ async def handle_vote(callback: types.CallbackQuery):
     await callback.answer(f"Выбрано: Факт {choice}")
 
 # --- API ---
+# ВАЖНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ:
 class GuestModel(BaseModel):
-    id: str = None
+    id: Optional[str] = None  # Разрешаем NULL/None
     name: str
-    fact1: str
-    fact2: str
-    fact3: str
-    correct: int
+    fact1: str = ""
+    fact2: str = ""
+    fact3: str = ""
+    correct: int = 1
 
 @app.get("/api/guests")
 async def get_guests():
@@ -217,7 +230,8 @@ async def get_guests():
 @app.post("/api/guests/save")
 async def save_guest(guest: GuestModel):
     import uuid
-    print(f"--- [LOG] Получен запрос на сохранение: {guest.name}")
+    print(f"--- [LOG] Сохранение гостя: {guest.name}")
+    
     g_id = guest.id or str(uuid.uuid4())
     existing = db.data["guests"].get(g_id, {})
     
@@ -229,7 +243,7 @@ async def save_guest(guest: GuestModel):
         "score": existing.get("score", 0)
     }
     db.save()
-    print(f"--- [LOG] Гость {guest.name} сохранен. ID: {g_id}")
+    print(f"--- [LOG] Гость сохранен с ID: {g_id}")
     return {"ok": True, "id": g_id}
 
 @app.post("/api/guests/delete/{g_id}")
@@ -271,7 +285,7 @@ async def api_start_voting():
 
     targets = list(db.data["viewers"].keys()) + [str(g["tg_id"]) for g in db.data["guests"].values() if g.get("tg_id")]
     sent = 0
-    for tg_id in set(targets): # set для уникальности
+    for tg_id in set(targets): 
         if not tg_id or tg_id == "None": continue
         if current_author_tg and str(tg_id) == str(current_author_tg): continue
         try:
@@ -299,7 +313,6 @@ async def api_reveal():
                     if is_correct: g["score"] = g.get("score", 0) + 1
                     break
     
-    # Автор получает баллы за ошибки
     total_votes = len(round_state["votes"])
     correct_votes = list(round_state["votes"].values()).count(correct)
     wrong_votes = total_votes - correct_votes

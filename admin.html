@@ -190,21 +190,37 @@
                 const saveGuest = async () => {
                     if(!form.value.name) return alert('Введите имя гостя!');
                     
-                    console.log("Saving guest...", form.value);
+                    // Создаем объект для отправки
+                    const payload = {
+                        name: form.value.name,
+                        fact1: form.value.fact1 || "",
+                        fact2: form.value.fact2 || "",
+                        fact3: form.value.fact3 || "",
+                        correct: form.value.correct,
+                        id: editId.value // Может быть null, но теперь бэкенд это примет
+                    };
+
+                    console.log("Отправка данных:", payload);
                     
                     try {
                         const res = await fetch('/api/guests/save', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({...form.value, id: editId.value})
+                            body: JSON.stringify(payload)
                         });
-                        const data = await res.json();
                         
+                        if (!res.ok) {
+                            // Если ошибка 422 - читаем детали
+                            const errData = await res.json();
+                            console.error("Ошибка сервера:", errData);
+                            alert('Ошибка сохранения! Проверь консоль.');
+                            return;
+                        }
+
+                        const data = await res.json();
                         if(data.ok) {
                             clearForm();
-                            await loadGuests(); // Обязательно обновляем список
-                        } else {
-                            alert('Ошибка сохранения');
+                            await loadGuests();
                         }
                     } catch(e) {
                         console.error(e);
