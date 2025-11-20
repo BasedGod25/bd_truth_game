@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Show</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container { text-align: center; width: 80%; }
+        h1 { font-size: 4rem; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 5px; }
+        
+        /* Карточки голосования */
+        .vote-bars { display: flex; justify-content: space-around; margin-top: 50px; height: 400px; align-items: flex-end; }
+        .bar-container { width: 20%; text-align: center; }
+        .bar {
+            background: linear-gradient(to top, #e94560, #ff2e63);
+            width: 100%;
+            border-radius: 10px 10px 0 0;
+            transition: height 0.5s ease, background 0.5s;
+            min-height: 10px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            padding-bottom: 10px;
+        }
+        .label { font-size: 2rem; margin-top: 10px; font-weight: bold; }
+
+        /* Состояние ПРАВИЛЬНОГО ответа */
+        .bar.correct { background: #0f3460 !important; box-shadow: 0 0 20px #0f3460; }
+        .bar.wrong { opacity: 0.3; }
+
+        /* Лобби */
+        .lobby-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
+        .player-tag { background: #16213e; padding: 10px 20px; border-radius: 20px; font-size: 1.5rem; animation: popIn 0.3s ease; }
+        
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        
+        <div v-if="view === 'lobby'">
+            <h1>Присоединяйтесь!</h1>
+            <h2>Игроков: {{ playerCount }}</h2>
+            <div class="lobby-list">
+                <div v-for="p in lastJoined" :key="p" class="player-tag">{{ p }}</div>
+            </div>
+            <p style="opacity: 0.5; margin-top: 50px;">Ищите бота в Telegram...</p>
+        </div>
+
+        <div v-else-if="view === 'voting' || view === 'result'">
+            <h1>Голосование</h1>
+            <div class="vote-bars">
+                <div class="bar-container">
+                    <div class="bar" :class="getResultClass(1)" :style="{ height: getBarHeight(1) }">
+                        {{ votes[1] }}
+                    </div>
+                    <div class="label">ФАКТ 1</div>
+                </div>
+                <div class="bar-container">
+                    <div class="bar" :class="getResultClass(2)" :style="{ height: getBarHeight(2) }">
+                        {{ votes[2] }}
+                    </div>
+                    <div class="label">ФАКТ 2</div>
+                </div>
+                <div class="bar-container">
+                    <div class="bar" :class="getResultClass(3)" :style="{ height: getBarHeight(3) }">
+                        {{ votes[3] }}
+                    </div>
+                    <div class="label">ФАКТ 3</div>
+                </div>
+            </div>
+            
+            <div v-if="view === 'result'" style="margin-top: 30px;">
+                <h2>Лидеры:</h2>
+                <div v-for="(user, idx) in leaderboard.slice(0, 3)" style="font-size: 1.5rem;">
+                    {{ idx + 1 }}. {{ user.name }} — {{ user.score }} очков
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+        const socket = io(); // Подключение к серверу
+
+        createApp({
+            setup() {
+                const view = ref('lobby'); // lobby, voting, result
+                const playerCount = ref(0);
+                const lastJoined = ref([]);
+                const votes = ref({1: 0, 2: 0, 3: 0});
+                const correctOption = ref(null);
+                const leaderboard = ref([]);
+
+                // --- Обработка событий от сервера ---
+                
+                socket.on('player_joined', (data) => {
+                    playerCount.value = data.count;
+                    lastJoined.value.push(data.name);
+                });
+
+                socket.on('state_update', (data) => {
+                    view.value = data.status;
+                    if (data.status === 'voting') {
+                        // Сброс для нового раунда
+                        votes.value = {1: 0, 2: 0, 3: 0};
+                        correctOption.value = null;
+                    }
+                });
+
+                socket.on('vote_update', (data) => {
+                    votes.value = data;
+                });
+
+                socket.on('round_result', (data) => {
+                    view.value = 'result';
+                    correctOption.value = data.correct;
+                    leaderboard.value = data.leaderboard;
+                });
+
+                // Вспомогательные функции для CSS
+                const getBarHeight = (id) => {
+                    const max = Math.max(votes.value[1], votes.value[2], votes.value[3], 1); // Чтобы не делить на 0
+                    const count = votes.value[id];
+                    return (count / max * 300) + 50 + 'px'; // Мин высота 50px
+                };
+
+                const getResultClass = (id) => {
+                    if (view.value !== 'result') return '';
+                    if (id === correctOption.value) return 'correct';
+                    return 'wrong';
+                };
+
+                return { view, playerCount, lastJoined, votes, getBarHeight, getResultClass, leaderboard };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

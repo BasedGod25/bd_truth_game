@@ -1,0 +1,9 @@
+services:
+  birthday-game:
+    build: .
+    container_name: birthday_show
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
