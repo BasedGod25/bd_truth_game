@@ -216,22 +216,39 @@ async def api_reveal():
     correct = game_state["round_data"]["correct"]
     author_id = game_state["round_data"]["author_id"]
     
-    for voter_id, choice in game_state["votes"].items():
-        if choice == correct:
-            game_state["players"][voter_id]["score"] += 1
-        else:
-            if author_id in game_state["players"]:
-                game_state["players"][author_id]["score"] += 1
+    # Структура для хранения имен проголосовавших: {1: ["Name1"], 2: ["Name2", "Name3"], ...}
+    vote_breakdown = {1: [], 2: [], 3: []}
 
+    # Подсчет очков и сбор имен
+    for voter_id, choice in game_state["votes"].items():
+        # Получаем имя игрока
+        player_name = "Неизвестный"
+        if voter_id in game_state["players"]:
+            player_name = game_state["players"][voter_id]["name"]
+            
+            # Начисляем очки (только если игрок существует)
+            if choice == correct:
+                game_state["players"][voter_id]["score"] += 1
+            else:
+                if author_id in game_state["players"]:
+                    game_state["players"][author_id]["score"] += 1
+        
+        # Добавляем имя в список для отображения
+        if choice in vote_breakdown:
+            vote_breakdown[choice].append(player_name)
+
+    # Сортировка лидерборда
     leaderboard = sorted(
         [{"name": p["name"], "score": p["score"]} for p in game_state["players"].values()],
         key=lambda x: x["score"], reverse=True
     )
     
     game_state["status"] = "result"
+    
     await sio.emit('round_result', {
         "correct": correct,
-        "leaderboard": leaderboard
+        "leaderboard": leaderboard,
+        "breakdown": vote_breakdown # <--- НОВОЕ ПОЛЕ
     })
     return {"ok": True}
 

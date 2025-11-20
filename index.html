@@ -14,21 +14,33 @@
         /* Лобби */
         .lobby-info { font-size: 2rem; margin-top: 30px; background: rgba(255,255,255,0.1); display: inline-block; padding: 20px 40px; border-radius: 50px; }
         
-        /* Презентация */
+        /* Факты */
         .author-title { font-size: 3rem; color: #e94560; margin-bottom: 40px; text-transform: uppercase; }
         .facts-container { display: flex; gap: 20px; justify-content: center; }
         .fact-card { background: #16213e; border: 2px solid #0f3460; padding: 30px; border-radius: 15px; width: 30%; font-size: 1.5rem; line-height: 1.4; transition: all 0.5s; position: relative; }
         .fact-number { font-size: 4rem; font-weight: 900; color: #533483; position: absolute; top: -30px; left: 20px; background: #1a1a2e; padding: 0 10px; }
         
-        /* Результаты */
-        .vote-area { margin-top: 50px; height: 300px; display: flex; justify-content: space-around; align-items: flex-end; }
-        .bar { width: 20%; background: #e94560; transition: height 0.5s; border-radius: 10px 10px 0 0; font-size: 2rem; font-weight: bold; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; min-height: 0px;}
+        /* Результаты (Столбики) */
+        .vote-area { margin-top: 50px; height: 300px; display: flex; justify-content: space-around; align-items: flex-end; animation: slideUp 0.5s ease-out; }
+        .bar { width: 20%; background: #e94560; transition: height 1s ease-in-out; border-radius: 10px 10px 0 0; font-size: 2rem; font-weight: bold; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; min-height: 0px;}
         
-        .fact-card.winner { background: #27ae60; border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5); }
+        .fact-card.winner { background: #27ae60; border-color: #2ecc71; transform: scale(1.05); box-shadow: 0 0 30px rgba(46, 204, 113, 0.5); z-index: 10;}
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); }
         
         .leaderboard { margin-top: 30px; font-size: 1.2rem; }
         .lb-item { background: rgba(255,255,255,0.1); margin: 5px auto; width: 50%; padding: 10px; border-radius: 10px; display: flex; justify-content: space-between;}
+
+        /* --- НОВОЕ: Экран ожидания голосования --- */
+        .suspense-area { margin-top: 50px; height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .pulsing-text { font-size: 3rem; font-weight: 900; color: #f1c40f; text-transform: uppercase; animation: pulse 1.5s infinite; }
+        .total-votes { font-size: 1.5rem; color: #95a5a6; margin-top: 20px; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -37,7 +49,6 @@
         <div v-if="view === 'lobby'">
             <h1 style="font-size: 5rem;">ИГРА В ПРАВДУ</h1>
             <h2>Заходи в Telegram бота</h2>
-            <h2>@lexa_truth_game_bot</h2>
             <div class="lobby-info">
                 Игроков в сети: <strong>{{ playerCount }}</strong>
             </div>
@@ -61,7 +72,12 @@
                 </div>
             </div>
 
-            <div v-if="view === 'voting' || view === 'result'" class="vote-area">
+            <div v-if="view === 'voting'" class="suspense-area">
+                <div class="pulsing-text">Время выбирать...</div>
+                <div class="total-votes">Принято голосов: {{ totalVotes }}</div>
+            </div>
+
+            <div v-if="view === 'result'" class="vote-area">
                 <div class="bar" :style="{height: getBarHeight(1)}">{{ votes[1] }}</div>
                 <div class="bar" :style="{height: getBarHeight(2)}">{{ votes[2] }}</div>
                 <div class="bar" :style="{height: getBarHeight(3)}">{{ votes[3] }}</div>
@@ -79,7 +95,7 @@
     </div>
 
     <script>
-        const { createApp, ref } = Vue;
+        const { createApp, ref, computed } = Vue;
         const socket = io();
 
         createApp({
@@ -92,11 +108,13 @@
                 const correct = ref(null);
                 const leaderboard = ref([]);
 
+                // Вычисляем общее количество голосов (сумма)
+                const totalVotes = computed(() => {
+                    return (votes.value[1] || 0) + (votes.value[2] || 0) + (votes.value[3] || 0);
+                });
+
                 // --- СОБЫТИЯ ---
-                
-                // 1. Полная синхронизация при входе
                 socket.on('sync_state', d => {
-                    console.log("Sync:", d);
                     view.value = d.status;
                     playerCount.value = d.playerCount;
                     if (d.round_data) {
@@ -106,13 +124,8 @@
                     if (d.votes) votes.value = d.votes;
                 });
 
-                // 2. Обновление счетчика (срабатывает, когда кто-то ввел никнейм)
-                socket.on('player_update', d => {
-                    console.log("New player count:", d.count);
-                    playerCount.value = d.count;
-                });
+                socket.on('player_update', d => playerCount.value = d.count);
                 
-                // 3. Смена этапа игры
                 socket.on('state_update', d => {
                     view.value = d.status;
                     if(d.facts) {
@@ -125,10 +138,8 @@
                     }
                 });
 
-                // 4. Живое голосование
                 socket.on('vote_update', d => votes.value = d);
                 
-                // 5. Результаты
                 socket.on('round_result', d => {
                     view.value = 'result';
                     correct.value = d.correct;
@@ -142,11 +153,13 @@
                 };
 
                 const getBarHeight = (id) => {
+                    // Чтобы при появлении анимация шла от 0, используем setTimeout или CSS transition, 
+                    // но здесь достаточно реактивности Vue.
                     const max = Math.max(Math.max(...Object.values(votes.value)), 1);
                     return (votes.value[id] / max * 250) + 'px';
                 };
 
-                return { view, playerCount, author, facts, votes, leaderboard, getCardClass, getBarHeight };
+                return { view, playerCount, author, facts, votes, totalVotes, leaderboard, getCardClass, getBarHeight };
             }
         }).mount('#app');
     </script>
