@@ -7,79 +7,42 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-    
     <style>
-        :root {
-            --bg: #1a1a2e;
-            --card: #16213e;
-            --acc: #e94560;
-            --green: #27ae60;
-            --txt: #fff;
-            --border: #333;
-        }
+        :root { --bg: #1a1a2e; --card: #16213e; --acc: #e94560; --green: #27ae60; --txt: #fff; --border: #333; }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(--txt); margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; padding-bottom: 50px; }
         
-        /* TABS */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { padding: 15px 30px; background: var(--border); cursor: pointer; border-radius: 8px; font-weight: bold; opacity: 0.6; transition: 0.3s; flex-grow: 1; text-align: center; }
+        .tab { padding: 15px 10px; background: var(--border); cursor: pointer; border-radius: 8px; font-weight: bold; opacity: 0.6; transition: 0.3s; flex-grow: 1; text-align: center; font-size: 0.9rem;}
         .tab.active { background: var(--acc); opacity: 1; }
         
-        /* CARDS */
         .card { background: var(--card); padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         
-        input, textarea, select {
-            width: 100%; padding: 12px; background: #0f3460; border: 1px solid var(--border); color: white; margin-bottom: 10px; box-sizing: border-box; border-radius: 6px; font-family: inherit; font-size: 1rem;
-        }
-        input:focus, textarea:focus, select:focus { outline: 1px solid var(--acc); border-color: var(--acc); }
-        label { display: block; margin-bottom: 5px; font-weight: 600; color: #ccc; font-size: 0.9rem; }
-
-        /* EDITOR: FACT ROW */
-        .fact-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch; }
-        .fact-input { flex-grow: 1; }
+        input, textarea, select { width: 100%; padding: 12px; background: #0f3460; border: 1px solid var(--border); color: white; margin-bottom: 10px; box-sizing: border-box; border-radius: 6px; font-family: inherit; font-size: 1rem; }
         
-        .truth-selector {
-            width: 90px;
-            background: #0f3460;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.2s;
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #777;
-            flex-shrink: 0;
-        }
-        .truth-selector:hover { border-color: var(--green); }
-        .truth-selector.selected {
-            background: var(--green);
-            border-color: var(--green);
-            color: white;
-            box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
-        }
-
-        /* LIST OF GUESTS */
-        .guest-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0,0,0,0.2); margin-bottom: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
-        .guest-item:hover { border-color: var(--acc); background: rgba(255,255,255,0.05); }
-        .guest-item.linked { border-left: 4px solid var(--green); }
+        /* IMAGE UPLOAD */
+        .img-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--acc); display: block; margin: 10px auto; background: #000; }
+        .file-input-wrapper { text-align: center; margin-bottom: 15px; }
         
-        /* BUTTONS */
-        .btn { padding: 15px; background: var(--acc); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; margin-top: 5px; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;}
-        .btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
-        .btn:active { transform: translateY(0); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: grayscale(1); }
+        /* VIDEO LIST */
+        .video-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); margin-bottom: 5px; border-radius: 6px; }
+        .btn-small-red { padding: 5px 10px; background: #c0392b; border: none; color: white; border-radius: 4px; cursor: pointer; }
         
+        /* COMMON BUTTONS */
+        .btn { padding: 15px; background: var(--acc); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; margin-top: 5px; text-transform: uppercase; }
         .btn.green { background: var(--green); }
         .btn.red { background: #c0392b; }
         .btn.grey { background: #555; }
-        
         .btn-row { display: flex; gap: 10px; margin-top: 15px; }
         
-        .status-text { text-align: center; margin-top: 10px; color: #888; font-size: 0.9rem; }
+        .guest-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0,0,0,0.2); margin-bottom: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+        .guest-item:hover { border-color: var(--acc); }
+        .guest-item.linked { border-left: 4px solid var(--green); }
+        
+        .fact-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch; }
+        .fact-input { flex-grow: 1; }
+        .truth-selector { width: 80px; background: #0f3460; border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .truth-selector.selected { background: var(--green); border-color: var(--green); }
     </style>
 </head>
 <body>
@@ -87,47 +50,34 @@
         <h1 style="text-align: center; color: #e94560;">🎛 ПУЛЬТ УПРАВЛЕНИЯ</h1>
         
         <div class="tabs">
-            <div class="tab" :class="{active: tab==='live'}" @click="tab='live'">🎥 Эфир (Шоу)</div>
-            <div class="tab" :class="{active: tab==='edit'}" @click="tab='edit'">📝 Редактор БД</div>
+            <div class="tab" :class="{active: tab==='live'}" @click="tab='live'">🎥 Эфир</div>
+            <div class="tab" :class="{active: tab==='edit'}" @click="tab='edit'">📝 Редактор</div>
+            <div class="tab" :class="{active: tab==='video'}" @click="tab='video'">📹 Видео</div>
         </div>
 
         <div v-if="tab === 'edit'">
             <div class="card">
-                <h2 style="margin-top:0; color: #ffd700;">{{ editId ? 'Редактировать' : 'Создать' }} гостя</h2>
+                <h2 style="margin-top:0;">{{ editId ? 'Редактировать' : 'Создать' }} гостя</h2>
                 
+                <div class="file-input-wrapper">
+                    <img v-if="form.image" :src="form.image" class="img-preview">
+                    <div v-else class="img-preview" style="display:flex;align-items:center;justify-content:center;color:#555;">Нет фото</div>
+                    
+                    <label style="cursor:pointer; background:#333; padding:5px 10px; display:inline-block; border-radius:4px; margin-top:5px;">
+                        📤 Загрузить фото
+                        <input type="file" @change="uploadImage" style="display:none" accept="image/*">
+                    </label>
+                </div>
+
                 <label>Имя Гостя</label>
-                <input v-model="form.name" placeholder="Например: Александр">
+                <input v-model="form.name" placeholder="Имя">
                 
-                <div class="fact-row">
+                <div v-for="i in 3" class="fact-row">
                     <div class="fact-input">
-                        <label>Факт №1</label>
-                        <textarea v-model="form.fact1" rows="2" placeholder="Текст факта..."></textarea>
+                        <textarea v-model="form['fact'+i]" rows="2" :placeholder="'Факт '+i"></textarea>
                     </div>
-                    <div class="truth-selector" :class="{selected: form.correct === 1}" @click="form.correct = 1">
-                        <span style="font-size: 1.5rem; margin-bottom: 5px;">✔️</span>
-                        <span>Правда</span>
-                    </div>
-                </div>
-
-                <div class="fact-row">
-                    <div class="fact-input">
-                        <label>Факт №2</label>
-                        <textarea v-model="form.fact2" rows="2" placeholder="Текст факта..."></textarea>
-                    </div>
-                    <div class="truth-selector" :class="{selected: form.correct === 2}" @click="form.correct = 2">
-                        <span style="font-size: 1.5rem; margin-bottom: 5px;">✔️</span>
-                        <span>Правда</span>
-                    </div>
-                </div>
-
-                <div class="fact-row">
-                    <div class="fact-input">
-                        <label>Факт №3</label>
-                        <textarea v-model="form.fact3" rows="2" placeholder="Текст факта..."></textarea>
-                    </div>
-                    <div class="truth-selector" :class="{selected: form.correct === 3}" @click="form.correct = 3">
-                        <span style="font-size: 1.5rem; margin-bottom: 5px;">✔️</span>
-                        <span>Правда</span>
+                    <div class="truth-selector" :class="{selected: form.correct === i}" @click="form.correct = i">
+                        <span>✔️</span>
                     </div>
                 </div>
                 
@@ -138,202 +88,164 @@
                 </div>
             </div>
 
-            <h3 style="margin-bottom: 10px;">Список гостей в базе:</h3>
-            <div v-if="Object.keys(guests).length === 0" style="text-align: center; color: #666;">Пусто. Добавьте гостей выше.</div>
-            
             <div v-for="(g, id) in guests" :key="id" class="guest-item" :class="{linked: g.tg_id}" @click="editGuest(id, g)">
                 <div>
-                    <strong style="font-size: 1.2rem;">{{ g.name }}</strong>
-                    <div v-if="g.tg_id" style="color: #27ae60; font-size: 0.8rem; margin-top: 4px;">
-                        ● Профиль привязан (ID: {{g.tg_id}})
-                    </div>
-                    <div v-else style="color: #e74c3c; font-size: 0.8rem; margin-top: 4px;">
-                        ● Не привязан к Telegram
-                    </div>
+                    <strong>{{ g.name }}</strong>
+                    <span v-if="g.tg_id" style="color:var(--green)"> ●</span>
                 </div>
-                <span style="color: #aaa; font-size: 1.5rem;">✎</span>
+                <span>✎</span>
             </div>
         </div>
 
         <div v-if="tab === 'live'">
             <div class="card">
-                <h2 style="color: #ffd700;">Выбор гостя</h2>
-                <p style="font-size: 0.9rem; color: #aaa;">Выберите человека из списка, чтобы начать его раунд.</p>
-                
-                <select v-model="selectedGuestId" style="padding: 15px; font-size: 1.1rem; margin-bottom: 20px;">
-                    <option :value="null">-- Нажмите, чтобы выбрать --</option>
+                <h2>Выбор гостя</h2>
+                <select v-model="selectedGuestId" style="padding: 15px;">
+                    <option :value="null">-- Выбрать --</option>
                     <option v-for="(g, id) in guests" :key="id" :value="id">
-                        {{ g.name }} {{ g.tg_id ? '✅' : '⚠️ (нет TG)' }}
+                        {{ g.name }} {{ g.tg_id ? '✅' : '' }}
                     </option>
                 </select>
+                <button class="btn green" @click="runRound" :disabled="!selectedGuestId">🚀 На экран</button>
+            </div>
 
-                <button class="btn green" @click="runRound" :disabled="!selectedGuestId">
-                    🚀 Вывести на экран
+            <div class="card" v-if="status">
+                <div style="text-align:center; margin-bottom:10px;">{{ status }}</div>
+                <div class="btn-row">
+                    <button class="btn" @click="api('start_voting')">▶️ Голосование</button>
+                    <button class="btn" style="background:#e67e22" @click="api('reveal')">👀 Ответ</button>
+                </div>
+                <button class="btn grey" style="margin-top:15px" @click="api('reset')">⏹ В Лобби</button>
+            </div>
+            
+            <button class="btn red" style="margin-top:30px" @click="hardReset">💀 СБРОС ИГРЫ</button>
+        </div>
+
+        <div v-if="tab === 'video'">
+            <div class="card">
+                <h2>Загрузка видео</h2>
+                <input type="file" ref="videoInput" accept="video/*">
+                <button class="btn green" @click="uploadVideo" :disabled="uploading">
+                    {{ uploading ? 'Загрузка...' : '📤 Загрузить в плейлист' }}
                 </button>
             </div>
 
-            <div class="card" v-if="status" style="text-align: center; border: 1px solid #e94560;">
-                <h3>Управление раундом</h3>
-                <div class="status-text">{{ status }}</div>
-                
-                <div class="btn-row">
-                    <button class="btn" @click="api('start_voting')">▶️ Старт Голосования</button>
-                    <button class="btn" style="background: #e67e22" @click="api('reveal')">👀 Показать Ответ</button>
-                </div>
-                
-                <button class="btn grey" style="margin-top: 15px;" @click="api('reset')">⏹ В Лобби (Очки сохраняются)</button>
-            </div>
-
-            <div style="margin-top: 40px; border-top: 1px solid #555; padding-top: 20px;">
-                <h3 style="color: #c0392b; text-align: center;">Опасная зона</h3>
-                <button class="btn red" @click="hardReset">💀 ПОЛНЫЙ СБРОС ОЧКОВ (НОВАЯ ИГРА)</button>
+            <h3>Список файлов ({{ videos.length }})</h3>
+            <div v-for="vid in videos" :key="vid" class="video-item">
+                <span style="font-size:0.9rem">{{ vid }}</span>
+                <button class="btn-small-red" @click="deleteVideo(vid)">🗑</button>
             </div>
         </div>
-        
-        <div class="status-text" style="margin-top: 30px;">Связь с сервером: {{ connectionStatus }}</div>
+
     </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
-        
         createApp({
             setup() {
                 const socket = io();
-                
-                // Состояния
-                const tab = ref('edit'); 
+                const tab = ref('live');
                 const guests = ref({});
+                const videos = ref([]);
                 const selectedGuestId = ref(null);
                 const status = ref('');
-                const connectionStatus = ref('Подключение...');
-                
-                // Форма редактора
                 const editId = ref(null);
-                const form = ref({ 
-                    name: '', 
-                    fact1: '', fact2: '', fact3: '', 
-                    correct: 1 
-                });
+                const form = ref({ name: '', image: null, fact1: '', fact2: '', fact3: '', correct: 1 });
+                const uploading = ref(false);
+                const videoInput = ref(null);
 
-                // --- API ФУНКЦИИ ---
-
+                // --- GUESTS ---
                 const loadGuests = async () => {
+                    const res = await fetch('/api/guests');
+                    guests.value = await res.json();
+                };
+
+                const uploadImage = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    
                     try {
-                        const res = await fetch('/api/guests');
-                        guests.value = await res.json();
-                        console.log("Guests list loaded", guests.value);
-                    } catch (e) {
-                        console.error("Error loading guests:", e);
-                    }
+                        const res = await fetch('/api/upload/image', {method: 'POST', body: fd});
+                        const data = await res.json();
+                        if (data.ok) form.value.image = data.url;
+                    } catch(e) { alert('Ошибка загрузки фото'); }
                 };
 
                 const saveGuest = async () => {
-                    if(!form.value.name) return alert('Введите имя гостя!');
-                    
-                    const payload = {
-                        name: form.value.name,
-                        fact1: form.value.fact1 || "",
-                        fact2: form.value.fact2 || "",
-                        fact3: form.value.fact3 || "",
-                        correct: form.value.correct,
-                        id: editId.value // null для нового, ID для старого
-                    };
-                    
-                    console.log("Saving payload:", payload);
-
-                    try {
-                        const res = await fetch('/api/guests/save', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(payload)
-                        });
-                        
-                        if(!res.ok) {
-                            console.error(await res.json());
-                            alert('Ошибка сохранения (см. консоль)');
-                            return;
-                        }
-                        
-                        const data = await res.json();
-                        if(data.ok) {
-                            clearForm();
-                            await loadGuests();
-                        }
-                    } catch(e) {
-                        console.error(e);
-                        alert('Ошибка сети');
-                    }
+                    if(!form.value.name) return alert('Введите имя');
+                    const payload = { ...form.value, id: editId.value };
+                    await fetch('/api/guests/save', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    clearForm(); loadGuests();
                 };
-                
+
                 const deleteGuest = async () => {
                     if(!confirm('Удалить?')) return;
-                    await fetch('/api/guests/delete/'+editId.value, { method: 'POST' });
-                    clearForm();
-                    loadGuests();
+                    await fetch('/api/guests/delete/'+editId.value, {method:'POST'});
+                    clearForm(); loadGuests();
                 };
-
-                const runRound = async () => {
-                    if (!selectedGuestId.value) return;
-                    await fetch('/api/prepare_round/'+selectedGuestId.value, {method:'POST'});
-                    status.value = 'Раунд запущен. Жмите "Старт голосования".';
-                };
-
-                const api = async (ep) => {
-                    status.value = 'Отправка команды...';
-                    const res = await fetch('/api/'+ep, {method:'POST'});
-                    if(ep === 'reset') {
-                        status.value = '';
-                    } else {
-                        const d = await res.json();
-                        status.value = 'Выполнено. ' + (d.sent_to ? `Отправлено: ${d.sent_to}` : '');
-                    }
-                };
-
-                const hardReset = async () => {
-                    if(!confirm("Удалить все очки и начать новую игру?")) return;
-                    await api('hard_reset');
-                    alert('Игра полностью сброшена.');
-                };
-
-                // --- UI ХЕЛПЕРЫ ---
 
                 const editGuest = (id, g) => {
                     editId.value = id;
-                    form.value = {
-                        name: g.name, 
-                        fact1: g.facts[1] || '', fact2: g.facts[2] || '', fact3: g.facts[3] || '', 
-                        correct: g.correct 
-                    };
-                    // Скролл наверх
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    form.value = { name: g.name, image: g.image, fact1: g.facts[1], fact2: g.facts[2], fact3: g.facts[3], correct: g.correct };
+                    window.scrollTo({top:0, behavior:'smooth'});
                 };
 
                 const clearForm = () => {
                     editId.value = null;
-                    form.value = { name: '', fact1: '', fact2: '', fact3: '', correct: 1 };
+                    form.value = { name: '', image: null, fact1: '', fact2: '', fact3: '', correct: 1 };
                 };
 
-                // --- SOCKET LISTENERS (АВТО-ОБНОВЛЕНИЕ) ---
-                
-                socket.on('connect', () => {
-                    connectionStatus.value = '🟢 Подключено';
-                    loadGuests();
-                });
-                
-                socket.on('disconnect', () => {
-                    connectionStatus.value = '🔴 Нет связи';
-                });
+                // --- VIDEOS ---
+                const loadVideos = async () => {
+                    const res = await fetch('/api/videos');
+                    videos.value = await res.json();
+                };
 
-                socket.on('player_update', () => {
-                    console.log("Update received");
-                    loadGuests(); // Перезагружаем список, если кто-то вошел в бота
-                });
+                const uploadVideo = async () => {
+                    const file = videoInput.value.files[0];
+                    if (!file) return alert('Выберите файл');
+                    uploading.value = true;
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    await fetch('/api/videos/upload', {method: 'POST', body: fd});
+                    uploading.value = false;
+                    videoInput.value.value = ''; // сброс
+                    loadVideos();
+                };
 
-                onMounted(loadGuests);
+                const deleteVideo = async (filename) => {
+                    if(!confirm('Удалить ' + filename + '?')) return;
+                    await fetch('/api/videos/delete/'+filename, {method:'POST'});
+                    loadVideos();
+                };
+
+                // --- CONTROL ---
+                const runRound = async () => {
+                    await fetch('/api/prepare_round/'+selectedGuestId.value, {method:'POST'});
+                    status.value = 'В эфире';
+                };
+                const api = async (ep) => {
+                    await fetch('/api/'+ep, {method:'POST'});
+                    status.value = ep === 'reset' ? '' : 'Готово';
+                };
+                const hardReset = async () => {
+                    if(confirm("Сбросить всё?")) api('hard_reset');
+                };
+
+                socket.on('player_update', loadGuests);
+                socket.on('connect', () => { loadGuests(); loadVideos(); });
+
+                onMounted(() => { loadGuests(); loadVideos(); });
 
                 return { 
-                    tab, guests, form, editId, selectedGuestId, status, connectionStatus,
-                    saveGuest, deleteGuest, editGuest, clearForm, runRound, api, hardReset 
+                    tab, guests, videos, form, editId, selectedGuestId, status, uploading, videoInput,
+                    saveGuest, deleteGuest, editGuest, clearForm, uploadImage,
+                    uploadVideo, deleteVideo, runRound, api, hardReset
                 };
             }
         }).mount('#app');
