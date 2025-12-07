@@ -18,7 +18,7 @@
         .lobby-title { font-size: 6rem; margin: 0; text-transform: uppercase; letter-spacing: 5px; color: var(--accent); text-shadow: 0 0 20px rgba(233, 69, 96, 0.5); }
         .lobby-info { font-size: 3rem; margin-top: 50px; background: rgba(255,255,255,0.1); display: inline-block; padding: 30px 80px; border-radius: 60px; border: 2px solid rgba(255,255,255,0.2); }
         
-        /* --- СТИЛИ ФОТО (ИЗМЕНЕНЫ) --- */
+        /* --- СТИЛИ ФОТО --- */
         .author-title { 
             font-size: 3.5rem; 
             color: var(--accent); 
@@ -30,28 +30,25 @@
         }
         
         .persona-image-container {
-            /* Теперь контейнер подстраивается под размер фото */
-            display: inline-block; /* Чтобы ширина была по контенту */
+            display: inline-block; 
             position: relative;
-            max-width: 90%;       /* Не шире экрана */
-            max-height: 60vh;     /* Ограничение высоты (60% экрана) */
+            max-width: 90%;       
+            max-height: 60vh;     
             margin: 0 auto 30px; 
-            
             border-radius: 20px;
             overflow: hidden;
             border: 6px solid var(--accent); 
             box-shadow: 0 0 50px rgba(233, 69, 96, 0.6); 
             background: #000;
-            
             animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
         .persona-image {
-            display: block;       /* Убирает отступ снизу */
-            width: auto;          /* Ширина авто */
-            height: auto;         /* Высота авто */
-            max-height: 60vh;     /* Фото не выше контейнера */
-            max-width: 100%;      /* Фото не шире контейнера */
+            display: block;      
+            width: auto;          
+            height: auto;        
+            max-height: 60vh;     
+            max-width: 100%;      
             object-fit: contain;  
         }
 
@@ -117,7 +114,7 @@
             
             <div class="author-title">{{ author }}</div>
 
-            <div class="persona-image-container" v-if="authorImage && view !== 'voting'">
+            <div class="persona-image-container" v-if="authorImage && view === 'presentation'">
                 <img :src="authorImage" class="persona-image">
             </div>
             
