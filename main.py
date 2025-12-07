@@ -3,7 +3,7 @@ import json
 import asyncio
 import socketio
 import shutil
-from typing import Optional, List
+from typing import Optional, List, Dict
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -104,8 +104,7 @@ def get_breakdown():
 def get_main_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🔄 Сменить профиль/имя")]], resize_keyboard=True)
 
-# --- ЛОГИКА БОТА (ВОССТАНОВЛЕНА) ---
-
+# --- ЛОГИКА БОТА ---
 if bot:
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message):
@@ -240,10 +239,11 @@ async def upload_image(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     return {"ok": True, "url": f"/media/images/{new_name}"}
 
+# --- УПРОЩЕННАЯ МОДЕЛЬ ГОСТЯ (только одно фото) ---
 class GuestModel(BaseModel):
     id: Optional[str] = None
     name: str
-    image: Optional[str] = None
+    image: Optional[str] = None # Главное фото личности
     fact1: str = ""
     fact2: str = ""
     fact3: str = ""
@@ -285,7 +285,7 @@ async def prepare_round(g_id: str):
     round_data = {
         "author_id": g_id, 
         "author": guest["name"],
-        "image": guest.get("image"),
+        "image": guest.get("image"), # Передаем главное фото
         "facts": guest["facts"], 
         "correct": guest["correct"]
     }
