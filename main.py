@@ -16,8 +16,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 # --- КОНФИГУРАЦИЯ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    # Для локального теста можно закомментировать, но на проде нужен токен
-    # raise ValueError("Нет токена!")
     print("WARNING: BOT_TOKEN not set")
 
 DATA_DIR = "data"
@@ -30,7 +28,6 @@ app = FastAPI()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 socket_app = socketio.ASGIApp(sio, app)
 
-# Если токена нет, бот не запустится, но админка будет работать
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 dp = Dispatcher()
 
@@ -38,7 +35,6 @@ dp = Dispatcher()
 for d in [DATA_DIR, MEDIA_DIR, IMG_DIR, VID_DIR]:
     os.makedirs(d, exist_ok=True)
 
-# Раздаем статику. Теперь файлы доступны по /media/images/.. и /media/videos/..
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 # --- DATA MANAGER ---
@@ -105,29 +101,116 @@ def get_breakdown():
         if choice_str in bd: bd[choice_str].append(name)
     return bd
 
-# --- BOT LOGIC (Shortened for brevity, assumes same logic) ---
-# ... (Код бота остается тем же, что и был, он работает отлично) ...
-# Для экономии места я его свернул, но ВСТАВЬ СЮДА КОД БОТА ИЗ ПРОШЛОГО ОТВЕТА
-# Если ты просто обновляешь файл, оставь блок бота как есть.
-# Главное, чтобы bot и dp были инициализированы.
+def get_main_menu():
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🔄 Сменить профиль/имя")]], resize_keyboard=True)
+
+# --- ЛОГИКА БОТА (ВОССТАНОВЛЕНА) ---
 
 if bot:
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message):
-        # ... (Стандартная логика старта) ...
-        # (Оставь код из предыдущего main.py)
-        pass 
-    
-    # ... Остальные хендлеры бота ...
+        tg_id = str(message.from_user.id)
+        registered_name = None
+        
+        if tg_id in db.data["viewers"]:
+            registered_name = db.data['viewers'][tg_id]['name']
+        else:
+            for g in db.data["guests"].values():
+                if str(g.get("tg_id")) == tg_id:
+                    registered_name = g['name']
+                    break
+
+        if registered_name:
+            await message.answer(f"Привет, {registered_name}!", reply_markup=get_main_menu())
+            return
+
+        available_guests = []
+        for g_id, g in db.data["guests"].items():
+            if not g.get("tg_id"):
+                available_guests.append(InlineKeyboardButton(text=f"Я — {g['name']}", callback_data=f"link_{g_id}"))
+        
+        kb_rows = []
+        for i in range(0, len(available_guests), 2):
+            kb_rows.append(available_guests[i:i+2])
+        kb_rows.append([InlineKeyboardButton(text="👁 Я просто зритель", callback_data="link_viewer")])
+        
+        await message.answer(f"Выбери свой профиль:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+    @dp.message(F.text == "🔄 Сменить профиль/имя")
+    async def cmd_reset_profile(message: types.Message):
+        tg_id = str(message.from_user.id)
+        
+        if tg_id in db.data["viewers"]:
+            del db.data["viewers"][tg_id]
+            
+        for g in db.data["guests"].values():
+            if str(g.get("tg_id")) == tg_id:
+                g["tg_id"] = None
+                
+        db.save()
+        await sio.emit('player_update', {"count": len(db.get_all_participants())})
+        await message.answer("Профиль сброшен.", reply_markup=types.ReplyKeyboardRemove())
+        await cmd_start(message)
+
+    @dp.callback_query(F.data.startswith("link_"))
+    async def handle_link(callback: types.CallbackQuery):
+        action = callback.data.split("_")[1]
+        tg_id = str(callback.from_user.id)
+        
+        if action == "viewer":
+            name = callback.from_user.first_name
+            db.data["viewers"][tg_id] = {"name": name, "score": 0}
+            role = "Зритель"
+        else:
+            guest_id = action
+            if guest_id in db.data["guests"]:
+                if db.data["guests"][guest_id].get("tg_id"):
+                    await callback.answer("Занято!", show_alert=True)
+                    return
+                db.data["guests"][guest_id]["tg_id"] = int(tg_id)
+                role = db.data["guests"][guest_id]["name"]
+            else:
+                await callback.answer("Ошибка", show_alert=True)
+                return
+                
+        db.save()
+        await sio.emit('player_update', {"count": len(db.get_all_participants())})
+        await callback.message.delete()
+        await callback.message.answer(f"Ты: **{role}**", reply_markup=get_main_menu())
+
+    @dp.callback_query(F.data.startswith("vote_"))
+    async def handle_vote(callback: types.CallbackQuery):
+        if round_state["status"] != "voting":
+            await callback.answer("Закрыто", show_alert=True)
+            return
+        choice = int(callback.data.split("_")[1])
+        user_id = callback.from_user.id
+        
+        # Check Author
+        current_author_tg = None
+        cur_round = db.data.get("current_round")
+        if cur_round:
+            guest = db.data["guests"].get(cur_round["author_id"])
+            if guest: current_author_tg = guest.get("tg_id")
+        
+        if current_author_tg and str(current_author_tg) == str(user_id):
+            await callback.answer("Автор не голосует!", show_alert=True)
+            return
+
+        round_state["votes"][user_id] = choice
+        await sio.emit('vote_update', get_vote_counts())
+        await callback.answer(f"Выбрано: Факт {choice}")
+
 
 # --- API: УПРАВЛЕНИЕ ВИДЕО ---
 
 @app.get("/api/videos")
 async def get_video_list():
     files = []
-    for f in os.listdir(VID_DIR):
-        if f.lower().endswith(('.mp4', '.webm', '.mov')):
-            files.append(f)
+    if os.path.exists(VID_DIR):
+        for f in os.listdir(VID_DIR):
+            if f.lower().endswith(('.mp4', '.webm', '.mov')):
+                files.append(f)
     return files
 
 @app.post("/api/videos/upload")
@@ -149,22 +232,18 @@ async def delete_video(filename: str):
 
 @app.post("/api/upload/image")
 async def upload_image(file: UploadFile = File(...)):
-    # Генерируем уникальное имя или оставляем оригинальное
     import uuid
     ext = file.filename.split('.')[-1]
     new_name = f"{uuid.uuid4()}.{ext}"
     file_path = os.path.join(IMG_DIR, new_name)
-    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    
-    # Возвращаем путь относительно корня сайта
     return {"ok": True, "url": f"/media/images/{new_name}"}
 
 class GuestModel(BaseModel):
     id: Optional[str] = None
     name: str
-    image: Optional[str] = None # <-- НОВОЕ ПОЛЕ
+    image: Optional[str] = None
     fact1: str = ""
     fact2: str = ""
     fact3: str = ""
@@ -182,7 +261,7 @@ async def save_guest(guest: GuestModel):
     
     db.data["guests"][g_id] = {
         "name": guest.name,
-        "image": guest.image, # Сохраняем картинку
+        "image": guest.image,
         "facts": {1: guest.fact1, 2: guest.fact2, 3: guest.fact3},
         "correct": guest.correct,
         "tg_id": existing.get("tg_id"), 
@@ -206,7 +285,7 @@ async def prepare_round(g_id: str):
     round_data = {
         "author_id": g_id, 
         "author": guest["name"],
-        "image": guest.get("image"), # Передаем картинку на экран
+        "image": guest.get("image"),
         "facts": guest["facts"], 
         "correct": guest["correct"]
     }
@@ -224,16 +303,9 @@ async def prepare_round(g_id: str):
     })
     return {"ok": True}
 
-# ... (Остальные API методы: start_voting, reveal, reset, hard_reset остаются без изменений) ...
-# СКОПИРУЙ ИХ ИЗ ПРОШЛОГО MAIN.PY, они не менялись
-
 @app.post("/api/start_voting")
 async def api_start_voting():
-    # ... (старый код)
     round_state["status"] = "voting"
-    # ... 
-    # Единственное изменение для рассылки (если нужно):
-    # Убедись, что targets собираются правильно
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Факт 1", callback_data="vote_1")],
         [InlineKeyboardButton(text="Факт 2", callback_data="vote_2")],
@@ -262,7 +334,6 @@ async def api_start_voting():
 
 @app.post("/api/reveal")
 async def api_reveal():
-    # ... (код из прошлого ответа, без изменений)
     if not db.data.get("current_round"): return
     correct = db.data["current_round"]["correct"]
     author_g_id = db.data["current_round"]["author_id"]
@@ -301,7 +372,7 @@ async def api_reset():
 
 @app.post("/api/hard_reset")
 async def api_hard_reset():
-    # ... (код из прошлого ответа)
+    print("--- HARD RESET ---")
     for g in db.data["guests"].values(): g["score"] = 0
     for v in db.data["viewers"].values(): v["score"] = 0
     db.save()
@@ -328,4 +399,3 @@ async def on_startup():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    
