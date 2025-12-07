@@ -18,63 +18,71 @@
         .lobby-title { font-size: 6rem; margin: 0; text-transform: uppercase; letter-spacing: 5px; color: var(--accent); text-shadow: 0 0 20px rgba(233, 69, 96, 0.5); }
         .lobby-info { font-size: 3rem; margin-top: 50px; background: rgba(255,255,255,0.1); display: inline-block; padding: 30px 80px; border-radius: 60px; border: 2px solid rgba(255,255,255,0.2); }
         
-        /* --- НОВЫЕ СТИЛИ ДЛЯ БОЛЬШОГО ФОТО --- */
-        .author-title { font-size: 3rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; font-weight: 900; text-shadow: 3px 3px 0px #000; flex-shrink: 0;}
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ОГРОМНОГО ФОТО --- */
+        .author-title { 
+            font-size: 4rem; /* Шрифт имени еще больше */
+            color: var(--accent); 
+            margin-bottom: 25px; 
+            text-transform: uppercase; 
+            font-weight: 900; 
+            text-shadow: 4px 4px 0px #000; 
+            flex-shrink: 0;
+        }
         
         .persona-image-container {
-            width: 100%;
-            max-width: 800px; /* Максимальная ширина фото */
-            height: 450px;    /* Фиксированная высота */
-            margin: 0 auto 30px; /* Отступы */
-            border-radius: 20px;
+            width: 98%; /* Почти во всю ширину контейнера */
+            max-width: 1600px; /* Максимальная ширина теперь очень большая */
+            height: 70vh;    /* Высота - 70% от высоты экрана. Это ОЧЕНЬ крупно. */
+            margin: 0 auto 40px; /* Отступ снизу побольше */
+            border-radius: 30px;
             overflow: hidden;
-            border: 4px solid var(--accent);
-            box-shadow: 0 0 40px rgba(233, 69, 96, 0.5);
+            border: 6px solid var(--accent); /* Рамка жирнее */
+            box-shadow: 0 0 60px rgba(233, 69, 96, 0.7); /* Тень больше и ярче */
             background: #000;
             flex-shrink: 0;
-            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: popIn 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Анимация чуть медленнее для пафоса */
         }
         
         .persona-image {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Чтобы фото влезало целиком и не обрезалось */
+            object-fit: contain; /* Фото вписывается целиком */
         }
 
         /* --- ФАКТЫ --- */
-        .facts-container { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
-        .fact-card { background: var(--card-bg); border: 2px solid #0f3460; padding: 20px; border-radius: 15px; width: 30%; min-width: 300px; font-size: 1.4rem; line-height: 1.3; position: relative; display: flex; align-items: center; justify-content: center; min-height: 120px; transition: all 0.5s; }
-        .fact-number { font-size: 2.5rem; font-weight: 900; color: #533483; position: absolute; top: -20px; left: 15px; background: var(--bg); padding: 0 10px; }
-        .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); z-index: 10; color: white; box-shadow: 0 0 30px var(--green); }
+        .facts-container { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        .fact-card { background: var(--card-bg); border: 2px solid #0f3460; padding: 25px; border-radius: 20px; width: 28%; min-width: 350px; font-size: 1.6rem; line-height: 1.4; position: relative; display: flex; align-items: center; justify-content: center; min-height: 150px; transition: all 0.5s; }
+        .fact-number { font-size: 3rem; font-weight: 900; color: #533483; position: absolute; top: -25px; left: 20px; background: var(--bg); padding: 0 15px; }
+        .fact-card.winner { background: var(--green); border-color: #2ecc71; transform: scale(1.05); z-index: 10; color: white; box-shadow: 0 0 40px var(--green); }
         .fact-card.loser { opacity: 0.3; filter: grayscale(1); transform: scale(0.95); }
 
         /* --- ЗОНА ГОЛОСОВАНИЯ --- */
-        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 400px; position: relative; }
-        .pulsing-text { font-size: 4rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);}
-        .total-votes { font-size: 1.5rem; color: #ccc; margin-bottom: 20px; }
+        .suspense-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; min-height: 400px; position: relative; margin-top: 20px; }
+        .pulsing-text { font-size: 5rem; font-weight: 900; color: var(--gold); animation: pulse 1.5s infinite; margin-bottom: 15px; text-shadow: 0 0 30px rgba(255, 215, 0, 0.6);}
+        .total-votes { font-size: 1.8rem; color: #ccc; margin-bottom: 30px; }
         
-        .video-wrapper { width: 60%; max-width: 800px; border-radius: 20px; overflow: hidden; box-shadow: 0 0 30px rgba(233, 69, 96, 0.3); border: 2px solid #333; background: #000; position: relative; aspect-ratio: 16/9; }
+        .video-wrapper { width: 80%; max-width: 1000px; border-radius: 25px; overflow: hidden; box-shadow: 0 0 40px rgba(233, 69, 96, 0.4); border: 3px solid #333; background: #000; position: relative; aspect-ratio: 16/9; }
         video { width: 100%; height: 100%; display: block; object-fit: contain; }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.02); } }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
         /* --- РЕЗУЛЬТАТЫ --- */
-        .results-wrapper { display: flex; justify-content: space-around; margin-top: 30px; align-items: flex-start; margin-bottom: 50px; }
-        .result-column { width: 32%; display: flex; flex-direction: column; align-items: center; }
-        .bar-container { height: 140px; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 15px; }
-        .bar { width: 50%; background: var(--accent); border-radius: 8px 8px 0 0; font-size: 2rem; font-weight: 900; display: flex; justify-content: center; align-items: flex-end; transition: height 1s ease-out; box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); padding-bottom: 5px; min-height: 50px !important; }
-        .bar.correct-bar { background: var(--green); box-shadow: 0 0 20px var(--green); }
+        .results-wrapper { display: flex; justify-content: space-around; margin-top: 40px; align-items: flex-start; margin-bottom: 60px; }
+        .result-column { width: 30%; display: flex; flex-direction: column; align-items: center; }
+        .bar-container { height: 180px; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
+        .bar { width: 60%; background: var(--accent); border-radius: 12px 12px 0 0; font-size: 2.5rem; font-weight: 900; display: flex; justify-content: center; align-items: flex-end; transition: height 1s ease-out; box-shadow: 0 0 20px rgba(233, 69, 96, 0.5); padding-bottom: 10px; min-height: 60px !important; }
+        .bar.correct-bar { background: var(--green); box-shadow: 0 0 30px var(--green); }
 
-        .voters-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
-        .voter-chip { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 1.2rem; font-weight: bold; animation: popIn 0.4s ease forwards; opacity: 0; }
+        .voters-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+        .voter-chip { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); padding: 8px 18px; border-radius: 25px; font-size: 1.3rem; font-weight: bold; animation: popIn 0.4s ease forwards; opacity: 0; }
         .voter-chip:nth-child(n) { animation-delay: 0.1s; }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        .leaderboard { margin-top: auto; width: 100%; background: rgba(0,0,0,0.3); padding: 30px 0; border-top: 2px solid rgba(255,255,255,0.1); border-radius: 20px; }
-        .leaderboard h3 { margin: 0 0 20px 0; font-size: 2.2rem; color: #ccc; text-transform: uppercase; letter-spacing: 4px; }
-        .lb-row { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .lb-item { background: #16213e; width: 80%; padding: 15px 40px; border-radius: 50px; font-size: 2.2rem; font-weight: 900; display: flex; justify-content: space-between; align-items: center; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 5px 10px rgba(0,0,0,0.3); }
-        .lb-item:nth-child(1) { background: linear-gradient(90deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.3)); border-color: var(--gold); color: var(--gold); transform: scale(1.05); }
+        .leaderboard { margin-top: auto; width: 100%; background: rgba(0,0,0,0.4); padding: 40px 0; border-top: 3px solid rgba(255,255,255,0.15); border-radius: 30px; }
+        .leaderboard h3 { margin: 0 0 30px 0; font-size: 2.5rem; color: #ccc; text-transform: uppercase; letter-spacing: 5px; }
+        .lb-row { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .lb-item { background: #16213e; width: 85%; padding: 20px 50px; border-radius: 60px; font-size: 2.8rem; font-weight: 900; display: flex; justify-content: space-between; align-items: center; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 15px rgba(0,0,0,0.4); }
+        .lb-item:nth-child(1) { background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.35)); border-color: var(--gold); color: var(--gold); transform: scale(1.05); }
         .lb-item:nth-child(2) { border-color: var(--silver); color: var(--silver); }
         .lb-item:nth-child(3) { border-color: var(--bronze); color: var(--bronze); }
     </style>
@@ -84,14 +92,14 @@
         
         <div v-if="view === 'lobby'">
             <h1 class="lobby-title">ШОУ "ЛЖЁШЬ-А"</h1>
-            <h2 style="color: #aaa;">Сканируйте QR и заходите в бота</h2>
+            <h2 style="color: #aaa; font-size: 2rem;">Сканируйте QR и заходите в бота</h2>
             <div class="lobby-info">Игроков: <strong>{{ playerCount }}</strong></div>
-            <div style="margin-top: 30px; opacity: 0.5; font-size: 0.9rem;">(Кликните по экрану один раз для активации звука)</div>
+            <div style="margin-top: 40px; opacity: 0.6; font-size: 1.2rem;">(Кликните по экрану один раз для активации звука)</div>
             
-            <div class="leaderboard" style="margin-top: 50px; background: transparent; border: none;" v-if="leaderboard.length > 0">
+            <div class="leaderboard" style="margin-top: 60px; background: transparent; border: none; box-shadow: none;" v-if="leaderboard.length > 0">
                 <h3>Лидеры</h3>
                 <div class="lb-row">
-                    <div v-for="(u, i) in leaderboard.slice(0,3)" class="lb-item">
+                    <div v-for="(u, i) in leaderboard.slice(0,3)" class="lb-item" style="width: 70%; padding: 15px 40px; font-size: 2.2rem;">
                         <span>#{{ i+1 }} {{ u.name }}</span>
                         <span>{{ u.score }}</span>
                     </div>
