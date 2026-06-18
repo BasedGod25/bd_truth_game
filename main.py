@@ -221,6 +221,7 @@ async def upload_video(file: UploadFile = File(...)):
 
 @app.post("/api/videos/delete/{filename}")
 async def delete_video(filename: str):
+    filename = os.path.basename(filename)
     file_path = os.path.join(VID_DIR, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
